@@ -1,8 +1,13 @@
+import type { KakaoPlace } from '../kakao/types';
 import type { Restriction } from '../menu/restrictions';
 import type { Candidate, MenuFilters, Relaxation } from '../menu/types';
 import type { Conflict } from './merge';
 
-export type RoomStatus = 'collecting' | 'voting' | 'decided';
+/**
+ * collecting 조건 모으기 → voting 메뉴 투표 → decided 메뉴 확정
+ *   → (가게도 정할 때만) place_voting 가게 투표 → place_decided 가게 확정
+ */
+export type RoomStatus = 'collecting' | 'voting' | 'decided' | 'place_voting' | 'place_decided';
 
 /** DB 행 그대로. snake_case인 건 PostgREST가 컬럼명을 그대로 주기 때문이다. */
 export type RoomRow = {
@@ -18,6 +23,9 @@ export type RoomRow = {
   relaxed: Relaxation[] | null;
   conflicts: Conflict[] | null;
   decided_menu_id: string | null;
+  /** 가게 투표 대상 스냅샷. 메뉴 후보와 같은 이유로 고정해 둔다. */
+  place_candidates: KakaoPlace[] | null;
+  decided_place_id: string | null;
   created_at: string;
   expires_at: string;
 };
@@ -37,6 +45,12 @@ export type VoteRow = {
   menu_id: string;
 };
 
+export type PlaceVoteRow = {
+  room_code: string;
+  token: string;
+  place_id: string;
+};
+
 /** 클라이언트에 내려보내는 방 상태. 남의 토큰은 절대 포함하지 않는다. */
 export type RoomState = {
   code: string;
@@ -53,13 +67,17 @@ export type RoomState = {
   hasSubmitted: boolean;
   /** 내가 투표한 메뉴. */
   myVote: string | null;
-  members: { nickname: string; submitted: boolean; voted: boolean }[];
+  members: { nickname: string; submitted: boolean; voted: boolean; placeVoted: boolean }[];
   candidates: Candidate[] | null;
   relaxed: Relaxation[];
   conflicts: Conflict[];
   restrictions: Restriction[];
   tally: { menuId: string; count: number }[];
   decidedMenuId: string | null;
+  placeCandidates: KakaoPlace[] | null;
+  placeTally: { placeId: string; count: number }[];
+  myPlaceVote: string | null;
+  decidedPlaceId: string | null;
 };
 
 /** 헷갈리는 글자(0/O, 1/I/L)를 뺀 알파벳. 코드를 말로 불러주기 쉬워야 한다. */

@@ -25,6 +25,12 @@ export type PreferenceState = {
   menus: Record<string, MenuStat>;
   /** 넘긴 메뉴. 당일 후보에서 빼는 용도. */
   skipped: { date: string; menuIds: string[] };
+  /**
+   * 확정해서 먹은 메뉴와 그 시각(epoch ms). 며칠 동안만 순위를 낮춘다(score.ts의 recencyFactor).
+   * 선택 필드라 이 필드가 없던 옛 저장본도 그대로 읽힌다. 기기 밖으로 동기화하지 않는다 —
+   * "요즘 뭘 먹었나"는 취향이 아니라 최근 사정이고, 다른 기기로 옮길 만큼 오래가지 않는다.
+   */
+  eaten?: Record<string, number>;
 };
 
 export function emptyState(): PreferenceState {
@@ -96,13 +102,22 @@ export function recordFeedback(
     },
   };
 
-  if (feedback === 'like') return { ...state, menus };
+  // 좋아요는 곧 확정이다. 취향으로는 오르지만, 먹은 기록도 남겨 며칠은 덜 나오게 한다.
+  if (feedback === 'like') return recordEaten({ ...state, menus }, menuId);
 
   const menuIds = state.skipped.menuIds.includes(menuId)
     ? state.skipped.menuIds
     : [...state.skipped.menuIds, menuId];
 
   return { ...state, menus, skipped: { date: today(), menuIds } };
+}
+
+/**
+ * 먹은 걸로 기록한다. 혼자 고르기의 "좋아요"(확정)와 방에서 메뉴가 정해졌을 때 부른다.
+ * 취향 카운트는 건드리지 않는다 — 방에서 정해진 메뉴는 내가 고른 게 아닐 수 있다.
+ */
+export function recordEaten(state: PreferenceState, menuId: string, at = Date.now()): PreferenceState {
+  return { ...state, eaten: { ...state.eaten, [menuId]: at } };
 }
 
 export function isSkippedToday(state: PreferenceState, menuId: string): boolean {

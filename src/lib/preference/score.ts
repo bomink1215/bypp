@@ -55,6 +55,25 @@ function axesOf(menu: Menu): string[] {
   ];
 }
 
+/**
+ * 최근에 먹은 메뉴의 배수. 먹은 직후 0.2에서 시작해 사흘에 걸쳐 1로 돌아온다.
+ *
+ * 취향 가중치(boost)와 따로 두는 이유: "좋아요"는 "이 메뉴가 좋다"(오래가는 취향)와
+ * "이걸로 먹을게"(오늘의 결정)를 한꺼번에 뜻한다. 취향으로만 반영하면 어제 점심에 확정한
+ * 국밥이 오늘 점심에 **더** 잘 나온다. 그래서 취향은 올리되 며칠만 따로 누른다.
+ * 0으로 만들지 않는 건 원칙 4와 같다 — 이틀 연속 국밥이 당길 수도 있다.
+ */
+const RECENT_FLOOR = 0.2;
+const RECENT_DAYS = 3;
+
+export function recencyFactor(state: PreferenceState, menuId: string, now = Date.now()): number {
+  const at = state.eaten?.[menuId];
+  if (!at) return 1;
+  const ageDays = Math.max(0, (now - at) / DAY_MS);
+  if (ageDays >= RECENT_DAYS) return 1;
+  return RECENT_FLOOR + (1 - RECENT_FLOOR) * (ageDays / RECENT_DAYS);
+}
+
 export type PreferenceModel = {
   boost: (menu: Menu) => number;
   /** 피드백이 하나도 없으면 false. UI에서 "아직 학습 전"을 알릴 때 쓴다. */

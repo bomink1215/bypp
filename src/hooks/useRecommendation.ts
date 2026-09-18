@@ -11,7 +11,7 @@ import {
   type MenuFilters,
   type Relaxation,
 } from '@/lib/menu/types';
-import { EXPLORE_RATE, buildPreferenceModel } from '@/lib/preference/score';
+import { EXPLORE_RATE, buildPreferenceModel, recencyFactor } from '@/lib/preference/score';
 import {
   clearPreferences,
   getPreferencesServerSnapshot,
@@ -119,7 +119,11 @@ export function useRecommendation() {
         // 원칙 3 — 일정 확률로 취향을 통째로 무시한다. 없으면 같은 메뉴만 돈다.
         const explore = Math.random() < EXPLORE_RATE;
         const model = buildPreferenceModel(state);
-        const chosen = pickWeighted(pool, explore ? () => 1 : (c) => model.boost(c.menu));
+        // 최근에 먹은 건 탐색 중에도 누른다. 취향을 무시하는 것과 어제 먹은 걸 잊는 건 다르다.
+        const chosen = pickWeighted(
+          pool,
+          (c) => (explore ? 1 : model.boost(c.menu)) * recencyFactor(state, c.menu.id),
+        );
         if (!chosen) {
           setStatus('empty');
           return;

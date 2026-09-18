@@ -128,5 +128,11 @@ export function useRoom(code: string) {
     vote: (menuId: string) =>
       act(() => post(`/api/rooms/${code}/vote`, { token: tokenRef.current, menuId })),
     decide: () => act(() => post(`/api/rooms/${code}/decide`, { token: tokenRef.current })),
+    startPlaceVoting: () =>
+      act(() => post(`/api/rooms/${code}/place-start`, { token: tokenRef.current })),
+    votePlace: (placeId: string) =>
+      act(() => post(`/api/rooms/${code}/place-vote`, { token: tokenRef.current, placeId })),
+    decidePlace: () =>
+      act(() => post(`/api/rooms/${code}/place-decide`, { token: tokenRef.current })),
   };
 }
