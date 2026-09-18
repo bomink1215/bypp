@@ -4,6 +4,7 @@ import { toErrorResponse } from '@/lib/api-error';
 import { walkMinutesToRadius } from '@/lib/distance';
 import { searchByCategory } from '@/lib/kakao/search';
 import type { CandidatesResponse } from '@/lib/menu/types';
+import { parseRestrictions } from '@/lib/menu/restrictions';
 import { parseAt, parseFilters, requireCoords, requireWalkMinutes } from '@/lib/params';
 import { deriveCandidates } from '@/lib/recommend';
 
@@ -22,6 +23,7 @@ export async function GET(request: NextRequest) {
     const walkMin = requireWalkMinutes(sp);
     const filters = parseFilters(sp);
     const at = parseAt(sp);
+    const restrictions = parseRestrictions(sp.get('exclude'));
 
     const radius = walkMinutesToRadius(walkMin);
     const widened = walkMinutesToRadius(walkMin * 1.5);
@@ -31,14 +33,15 @@ export async function GET(request: NextRequest) {
 
     // 전수를 봤을 때만 "주변에 없다"로 후보를 걷어낼 수 있다. 밀집 지역에서 받은 목록은
     // 반경 전체가 아니라 가장 가까운 45곳의 표본이라, 그걸로 판정하면 멀쩡한 가게를 지운다.
-    const derived = deriveCandidates(
-      sweep.places,
-      radius,
-      widened,
+    const derived = deriveCandidates({
+      placesWide: sweep.places,
+      requestedRadius: radius,
+      widenedRadius: widened,
       filters,
       at,
-      sweep.complete,
-    );
+      gate: sweep.complete,
+      restrictions,
+    });
 
     const body: CandidatesResponse = {
       candidates: derived.candidates,

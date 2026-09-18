@@ -1,6 +1,7 @@
 import type { KakaoPlace } from './kakao/types';
 import { menuMatchesCategory } from './menu/category-map';
 import { openLikelihood } from './menu/hours';
+import { isExcluded, type Restriction } from './menu/restrictions';
 import { MENUS } from './menu/seed';
 import type { Candidate, Menu, MenuFilters, Relaxation, Taste } from './menu/types';
 
@@ -68,15 +69,33 @@ export function tasteScore(menu: Menu, f: MenuFilters): number {
  * 질의가 결과를 미리 좁혀 45 상한에 걸리지 않고, 화면에 띄우기 전에 0건이면 다음 후보로
  * 넘어가므로 "파는 데가 없는 메뉴"는 여전히 사용자에게 보이지 않는다.
  */
-export function buildCandidates(
-  places: KakaoPlace[],
-  filters: MenuFilters,
-  at: Date,
-  gate: boolean,
-): Candidate[] {
+export type CandidateOptions = {
+  places: KakaoPlace[];
+  filters: MenuFilters;
+  at: Date;
+  gate: boolean;
+  restrictions?: readonly Restriction[];
+  /**
+   * 맛 적합도 계산을 갈아끼운다. 여럿이 고를 때 "가장 불만인 사람 기준"으로 바꾸기 위한 것이다.
+   * 생략하면 `filters`의 맛 축을 그대로 쓴다(혼자 쓸 때).
+   */
+  tasteScorer?: (menu: Menu) => number;
+};
+
+export function buildCandidates({
+  places,
+  filters,
+  at,
+  gate,
+  restrictions = [],
+  tasteScorer,
+}: CandidateOptions): Candidate[] {
+  const scoreTaste = tasteScorer ?? ((menu: Menu) => tasteScore(menu, filters));
   const candidates: Candidate[] = [];
 
   for (const menu of MENUS) {
+    // 제약이 먼저다. 이건 사용자의 바람이 아니라 못 먹는다는 사실이다.
+    if (isExcluded(menu, restrictions)) continue;
     if (!matchesFilters(menu, filters)) continue;
 
     const nearbyCount = places.filter((p) => menuMatchesCategory(menu, p.category_name)).length;
@@ -88,7 +107,7 @@ export function buildCandidates(
 
     candidates.push({
       menu,
-      baseScore: openLikelihood(menu.cuisine, at) * density * tasteScore(menu, filters),
+      baseScore: openLikelihood(menu.cuisine, at) * density * scoreTaste(menu),
       nearbyCount,
     });
   }
@@ -119,17 +138,28 @@ export type DerivedCandidates = {
  * `distance`로 잘라 쓰기 때문이다. 무엇을 풀었는지는 반드시 호출자에게 돌려준다 —
  * 조용히 넓히면 사용자는 자기가 건 조건이 지켜진 줄 안다.
  */
-export function deriveCandidates(
-  placesWide: KakaoPlace[],
-  requestedRadius: number,
-  widenedRadius: number,
-  filters: MenuFilters,
-  at: Date,
-  gate: boolean,
-): DerivedCandidates {
+export type DeriveOptions = Omit<CandidateOptions, 'places'> & {
+  placesWide: KakaoPlace[];
+  requestedRadius: number;
+  widenedRadius: number;
+};
+
+export function deriveCandidates({
+  placesWide,
+  requestedRadius,
+  widenedRadius,
+  filters,
+  at,
+  gate,
+  restrictions = [],
+  tasteScorer,
+}: DeriveOptions): DerivedCandidates {
   const placesNear = placesWide.filter((p) => Number(p.distance) <= requestedRadius);
 
-  const attempt = (places: KakaoPlace[], f: MenuFilters) => buildCandidates(places, f, at, gate);
+  // restrictions는 attempt에 항상 그대로 넘어간다. 아래 완화 단계에서도 건드리지 않는다 —
+  // 못 먹는 걸 추천하느니 "없다"고 말하는 게 맞다.
+  const attempt = (places: KakaoPlace[], f: MenuFilters) =>
+    buildCandidates({ places, filters: f, at, gate, restrictions, tasteScorer });
 
   let candidates = attempt(placesNear, filters);
   if (candidates.length > 0) {

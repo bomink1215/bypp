@@ -13,7 +13,7 @@ import type { KakaoSearchResponse } from './types';
  *   - 4xx/5xx에서 throw하지 않음 → `res.ok` 검사
  *   - 타임아웃 없음 → `AbortSignal.timeout()`
  */
-const BASE = 'https://dapi.kakao.com/v2/local/search';
+const BASE = 'https://dapi.kakao.com/v2/local';
 const TIMEOUT_MS = 5000;
 
 export class KakaoApiError extends Error {
@@ -31,11 +31,17 @@ type FetchOptions = {
   revalidate?: number;
 };
 
-export async function kakaoFetch(
-  path: 'category' | 'keyword',
+/** 로컬 API 중 우리가 쓰는 엔드포인트. */
+export type KakaoPath =
+  | 'search/category'
+  | 'search/keyword'
+  | 'geo/coord2address';
+
+export async function kakaoFetch<T = KakaoSearchResponse>(
+  path: KakaoPath,
   params: Record<string, string | number>,
   { revalidate }: FetchOptions = {},
-): Promise<KakaoSearchResponse> {
+): Promise<T> {
   const key = process.env.KAKAO_REST_API_KEY;
   if (!key) {
     throw new KakaoApiError(500, 'KAKAO_REST_API_KEY가 설정되지 않았습니다. .env.local을 확인하세요.');
@@ -64,5 +70,5 @@ export async function kakaoFetch(
     throw new KakaoApiError(res.status, `카카오 API ${res.status}`);
   }
 
-  return res.json() as Promise<KakaoSearchResponse>;
+  return res.json() as Promise<T>;
 }

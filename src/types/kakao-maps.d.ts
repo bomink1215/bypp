@@ -7,6 +7,8 @@
 declare namespace kakao.maps {
   class LatLng {
     constructor(lat: number, lng: number);
+    getLat(): number;
+    getLng(): number;
   }
 
   class LatLngBounds {
@@ -18,6 +20,7 @@ declare namespace kakao.maps {
     constructor(container: HTMLElement, options: { center: LatLng; level?: number });
     setBounds(bounds: LatLngBounds): void;
     setCenter(latlng: LatLng): void;
+    getCenter(): LatLng;
     relayout(): void;
   }
 

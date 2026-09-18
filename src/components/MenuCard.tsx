@@ -1,10 +1,12 @@
 'use client';
 
+import { RESTRICTION_LABEL, type Restriction } from '@/lib/menu/restrictions';
 import type { Menu, Relaxation } from '@/lib/menu/types';
 
 type Props = {
   menu: Menu;
   relaxed: Relaxation[];
+  restrictions: readonly Restriction[];
   decided: boolean;
   busy: boolean;
   onLike: () => void;
@@ -43,11 +45,21 @@ function traits(menu: Menu): string[] {
   return out;
 }
 
-export function MenuCard({ menu, relaxed, decided, busy, onLike, onAnother }: Props) {
+export function MenuCard({ menu, relaxed, restrictions, decided, busy, onLike, onAnother }: Props) {
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
       <p className="text-xs text-neutral-500 dark:text-neutral-400">오늘의 추천</p>
       <h2 className="mt-1 text-3xl font-bold tracking-tight">{menu.name}</h2>
+
+      {/*
+        제약이 걸려 있다는 사실을 결과에 항상 띄운다. localStorage가 초기화되면 제약이
+        조용히 사라지는데, 이 줄이 없어진 걸 눈치채야 다시 설정할 수 있다.
+      */}
+      {restrictions.length > 0 && (
+        <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+          {restrictions.map((r) => RESTRICTION_LABEL[r]).join(' · ')} 제외 중
+        </p>
+      )}
 
       <div className="mt-3 flex flex-wrap gap-1.5">
         {traits(menu).map((t) => (

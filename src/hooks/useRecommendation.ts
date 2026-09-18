@@ -23,6 +23,7 @@ import {
   type PreferenceState,
 } from '@/lib/preference/store';
 import { pickWeighted } from '@/lib/recommend';
+import { serializeRestrictions, type Restriction } from '@/lib/menu/restrictions';
 import type { Coords } from './useGeolocation';
 
 export type RecStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
@@ -32,6 +33,8 @@ export type Query = {
   walkMin: number;
   at: Date;
   filters: MenuFilters;
+  /** 못 먹는 것. 서버에서 완화 없이 제외된다. */
+  restrictions: readonly Restriction[];
 };
 
 /**
@@ -168,6 +171,7 @@ export function useRecommendation() {
           lng: String(query.coords.lng),
           walkMin: String(query.walkMin),
           at: query.at.toISOString(),
+          exclude: serializeRestrictions(query.restrictions),
           ...filtersToParams(query.filters),
         });
         const data = await getJson<CandidatesResponse>(

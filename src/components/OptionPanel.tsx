@@ -1,6 +1,10 @@
 'use client';
 
+import { useState } from 'react';
+
+import { LocationPicker } from './LocationPicker';
 import { walkMinutesToRadius } from '@/lib/distance';
+import { RESTRICTIONS, RESTRICTION_LABEL, type Restriction } from '@/lib/menu/restrictions';
 import type { MenuFilters, Taste, Toggle } from '@/lib/menu/types';
 import { REGIONS } from '@/lib/regions';
 import { formatWhen, type When } from '@/lib/when';
@@ -17,6 +21,12 @@ type Props = {
   locationLabel: string;
   onRequestLocation: () => void;
   onPickRegion: (c: Coords, name: string) => void;
+  restrictions: readonly Restriction[];
+  onToggleRestriction: (r: Restriction) => void;
+  /** 지도 초기 중심. 현재 위치를 이미 잡았다면 거기서 시작한다. */
+  currentCoords: Coords | null;
+  /** 방에서는 위치와 시간을 방장이 정하므로 참가자에게는 감춘다. */
+  hideLocationAndTime?: boolean;
 };
 
 const HOURS = [7, 8, 9, 11, 12, 13, 15, 17, 18, 19, 20, 21, 22, 23, 1, 3];
@@ -174,23 +184,76 @@ export function OptionPanel({
   locationLabel,
   onRequestLocation,
   onPickRegion,
+  restrictions,
+  onToggleRestriction,
+  currentCoords,
+  hideLocationAndTime = false,
 }: Props) {
+  const [picking, setPicking] = useState(false);
+
   const set = <K extends keyof MenuFilters>(key: K, value: MenuFilters[K]) =>
     onFiltersChange({ ...filters, [key]: value });
 
   return (
     <div className="space-y-5 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+      {/*
+        못 먹는 것은 매번 고르는 옵션이 아니라 저장되는 설정이다. 섞이면 "오늘은 고기 말고"와
+        "고기를 못 먹는다"를 혼동하게 되므로 배경을 달리해 시각적으로 떼어놓는다.
+      */}
+      <section className="-m-1 space-y-2.5 rounded-xl bg-neutral-50 p-3 dark:bg-neutral-800/50">
+        <div className="flex items-baseline justify-between gap-2">
+          <h3 className="text-xs font-semibold tracking-wide text-neutral-500 dark:text-neutral-400">
+            못 먹는 것
+          </h3>
+          <span className="text-[11px] text-neutral-400">
+            {restrictions.length > 0 ? '이 브라우저에 저장됨' : '한 번만 정해두세요'}
+          </span>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          {RESTRICTIONS.map((r) => (
+            <Chip key={r} active={restrictions.includes(r)} onClick={() => onToggleRestriction(r)}>
+              {RESTRICTION_LABEL[r]}
+            </Chip>
+          ))}
+        </div>
+
+        <p className="text-[11px] leading-relaxed text-neutral-400">
+          고른 것은 추천에서 <span className="font-medium">항상 빠집니다.</span> 다만 가게별 조리법까지는
+          알 수 없으니 알레르기가 있다면 주문 전에 직접 확인하세요.
+        </p>
+      </section>
+
+      {!hideLocationAndTime && (
       <Group title="위치와 시간">
-        {geoStatus === 'ready' ? (
+        {picking ? (
+          <LocationPicker
+            initial={currentCoords}
+            onPick={(c, name) => {
+              onPickRegion(c, name);
+              setPicking(false);
+            }}
+            onCancel={() => setPicking(false)}
+          />
+        ) : geoStatus === 'ready' ? (
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium">{locationLabel}</span>
-            <button
-              type="button"
-              onClick={onRequestLocation}
-              className="text-xs text-neutral-500 underline underline-offset-2 hover:text-neutral-800 dark:hover:text-neutral-200"
-            >
-              다시 잡기
-            </button>
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">{locationLabel}</span>
+            <div className="flex shrink-0 gap-2 text-xs text-neutral-500">
+              <button
+                type="button"
+                onClick={onRequestLocation}
+                className="underline underline-offset-2 hover:text-neutral-800 dark:hover:text-neutral-200"
+              >
+                현재 위치
+              </button>
+              <button
+                type="button"
+                onClick={() => setPicking(true)}
+                className="underline underline-offset-2 hover:text-neutral-800 dark:hover:text-neutral-200"
+              >
+                지도에서
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-2">
@@ -211,6 +274,14 @@ export function OptionPanel({
                   : '이 브라우저에서 위치를 쓸 수 없어요. 지역을 직접 골라주세요.'}
               </p>
             )}
+
+            <button
+              type="button"
+              onClick={() => setPicking(true)}
+              className="w-full rounded-xl border border-neutral-200 px-4 py-2.5 text-sm font-medium dark:border-neutral-700"
+            >
+              지도에서 직접 찍기
+            </button>
 
             <select
               defaultValue=""
@@ -285,6 +356,7 @@ export function OptionPanel({
           </p>
         </div>
       </Group>
+      )}
 
       <Group title="맛">
         <div className="space-y-4">

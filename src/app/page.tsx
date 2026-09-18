@@ -6,14 +6,18 @@ import { MenuCard } from '@/components/MenuCard';
 import { OptionPanel } from '@/components/OptionPanel';
 import { PlaceList } from '@/components/PlaceList';
 import { PlaceMap } from '@/components/PlaceMap';
+import { RoomLauncher } from '@/components/RoomLauncher';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { useProfile } from '@/hooks/useProfile';
 import { useRecommendation } from '@/hooks/useRecommendation';
+import { RESTRICTION_LABEL } from '@/lib/menu/restrictions';
 import { DEFAULT_FILTERS, type MenuFilters } from '@/lib/menu/types';
 import { resolveWhen, type When } from '@/lib/when';
 
 export default function Home() {
   const geo = useGeolocation();
   const rec = useRecommendation();
+  const profile = useProfile();
 
   const [when, setWhen] = useState<When>({ kind: 'now' });
   const [walkMin, setWalkMin] = useState(10);
@@ -28,7 +32,7 @@ export default function Home() {
   const handleRecommend = () => {
     if (!geo.coords) return;
     setSelectedId(null);
-    void rec.start({ coords: geo.coords, walkMin, at, filters });
+    void rec.start({ coords: geo.coords, walkMin, at, filters, restrictions: profile.restrictions });
   };
 
   return (
@@ -53,6 +57,9 @@ export default function Home() {
             locationLabel={geo.label}
             onRequestLocation={geo.request}
             onPickRegion={geo.setManual}
+            restrictions={profile.restrictions}
+            onToggleRestriction={profile.toggle}
+            currentCoords={geo.coords}
           />
 
           <button
@@ -63,6 +70,13 @@ export default function Home() {
           >
             {busy ? '찾는 중…' : geo.coords ? '메뉴 추천받기' : '먼저 위치를 정해주세요'}
           </button>
+
+          <RoomLauncher
+            coords={geo.coords}
+            placeLabel={geo.label || '현재 위치'}
+            walkMin={walkMin}
+            eatAt={at}
+          />
 
           {rec.trained && (
             <div className="flex items-center justify-between px-1 text-[11px] text-neutral-400">
@@ -94,6 +108,12 @@ export default function Home() {
           {rec.status === 'empty' && (
             <div className="rounded-2xl border border-neutral-200 p-6 text-center text-sm text-neutral-500 dark:border-neutral-800">
               조건에 맞는 메뉴를 찾지 못했어요. 도보 시간을 늘리거나 조건을 줄여보세요.
+              {profile.restrictions.length > 0 && (
+                <span className="mt-1 block text-xs text-neutral-400">
+                  {profile.restrictions.map((r) => RESTRICTION_LABEL[r]).join(' · ')} 은(는)
+                  제외한 채로 찾았어요. 이건 자동으로 풀지 않습니다.
+                </span>
+              )}
             </div>
           )}
 
@@ -101,6 +121,7 @@ export default function Home() {
             <MenuCard
               menu={rec.menu}
               relaxed={rec.relaxed}
+              restrictions={profile.restrictions}
               decided={rec.decided}
               busy={busy}
               onLike={rec.like}

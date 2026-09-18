@@ -43,7 +43,7 @@ export async function searchByCategory(
 
   for (let page = 1; page <= pages; page++) {
     const res = await kakaoFetch(
-      'category',
+      'search/category',
       {
         category_group_code: CATEGORY_FOOD,
         x: roundCoord(coords.lng),
@@ -69,7 +69,7 @@ export async function searchByKeyword(
   coords: Coords,
   radius: number,
 ): Promise<KakaoPlace[]> {
-  const res = await kakaoFetch('keyword', {
+  const res = await kakaoFetch('search/keyword', {
     query,
     category_group_code: CATEGORY_FOOD,
     x: coords.lng,
@@ -80,4 +80,29 @@ export async function searchByKeyword(
   });
 
   return res.documents;
+}
+
+/** 좌표 → 주소. 지도에서 찍은 지점이 어디인지 사람이 읽을 수 있게 한다. */
+export async function coordToAddress(coords: Coords): Promise<string | null> {
+  const res = await kakaoFetch<{
+    documents: {
+      road_address: { address_name: string; building_name: string } | null;
+      address: { address_name: string } | null;
+    }[];
+  }>(
+    'geo/coord2address',
+    { x: coords.lng, y: coords.lat },
+    { revalidate: 86_400 }, // 주소는 거의 안 바뀐다
+  );
+
+  const doc = res.documents[0];
+  if (!doc) return null;
+
+  // 건물명이 있으면 그게 가장 알아보기 쉽다. 없으면 도로명, 그것도 없으면 지번.
+  return (
+    doc.road_address?.building_name ||
+    doc.road_address?.address_name ||
+    doc.address?.address_name ||
+    null
+  );
 }
