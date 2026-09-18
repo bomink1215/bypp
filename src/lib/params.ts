@@ -1,4 +1,4 @@
-import { DEFAULT_FILTERS, type MenuFilters } from './menu/types';
+import { DEFAULT_FILTERS, type Level, type MenuFilters, type Taste, type Toggle } from './menu/types';
 
 export class BadRequestError extends Error {}
 
@@ -36,15 +36,31 @@ export function parseAt(sp: URLSearchParams): Date {
   return d;
 }
 
-function pick<T extends string>(raw: string | null, allowed: readonly T[], fallback: T): T {
-  return allowed.includes(raw as T) ? (raw as T) : fallback;
+/** 맛 슬라이더. 키가 없으면 상관없음(null)이다. */
+function parseTaste(raw: string | null): Taste {
+  if (raw === null || raw === '') return null;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 0 || n > 3) return null;
+  return n as Level;
+}
+
+function parseToggle(raw: string | null): Toggle {
+  return raw === 'yes' || raw === 'no' ? raw : 'any';
 }
 
 export function parseFilters(sp: URLSearchParams): MenuFilters {
+  const weight = sp.get('weight');
+
   return {
-    spicy: pick(sp.get('spicy'), ['any', 'none', 'mild', 'hot'] as const, DEFAULT_FILTERS.spicy),
-    meat: pick(sp.get('meat'), ['any', 'required', 'none'] as const, DEFAULT_FILTERS.meat),
-    soup: pick(sp.get('soup'), ['any', 'yes', 'no'] as const, DEFAULT_FILTERS.soup),
-    weight: pick(sp.get('weight'), ['any', 'light', 'heavy'] as const, DEFAULT_FILTERS.weight),
+    spicy: parseTaste(sp.get('spicy')),
+    richness: parseTaste(sp.get('richness')),
+    temperature: parseTaste(sp.get('temperature')),
+    meat: parseToggle(sp.get('meat')),
+    seafood: parseToggle(sp.get('seafood')),
+    flour: parseToggle(sp.get('flour')),
+    weight: weight === 'light' || weight === 'heavy' ? weight : DEFAULT_FILTERS.weight,
+    soup: parseToggle(sp.get('soup')),
+    solo: parseToggle(sp.get('solo')),
+    quick: parseToggle(sp.get('quick')),
   };
 }

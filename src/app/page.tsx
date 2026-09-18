@@ -104,7 +104,6 @@ export default function Home() {
               decided={rec.decided}
               busy={busy}
               onLike={rec.like}
-              onDislike={rec.dislike}
               onAnother={rec.another}
             />
           )}

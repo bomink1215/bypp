@@ -12,7 +12,13 @@ type Props = {
   onSelect: (id: string) => void;
 };
 
-/** 마지막 남는 불확실성은 전화가 가장 빨리 없앤다. 추정 배지로 우기지 않는다. */
+/**
+ * 가게 목록.
+ *
+ * 카카오맵 버튼이 주 버튼이다. 우리가 줄 수 없는 정보(영업시간, 메뉴, 가격, 사진)가
+ * 전부 거기 있기 때문이다 — 카카오 로컬 API는 그 어느 것도 주지 않는다.
+ * 그래서 "확인하러 가는 곳"을 가장 크게 두고, 무엇을 확인하면 되는지도 같이 적는다.
+ */
 export function PlaceList({ places, at, selectedId, onSelect }: Props) {
   return (
     <ul className="space-y-2">
@@ -47,32 +53,33 @@ export function PlaceList({ places, at, selectedId, onSelect }: Props) {
               {p.road_address_name || p.address_name}
             </p>
 
-            {hint && <p className="mt-1 text-[11px] text-neutral-400">{hint} · 방문 전 확인하세요</p>}
+            {hint && <p className="mt-1 text-[11px] text-neutral-400">{hint}</p>}
 
-            <div className="mt-3 flex gap-2">
-              {p.phone ? (
-                <a
-                  href={`tel:${p.phone}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex-1 rounded-xl bg-neutral-900 px-3 py-2 text-center text-xs font-medium text-white dark:bg-white dark:text-neutral-900"
-                >
-                  전화 {p.phone}
-                </a>
-              ) : (
-                <span className="flex-1 rounded-xl bg-neutral-100 px-3 py-2 text-center text-xs text-neutral-400 dark:bg-neutral-800">
-                  전화번호 없음
-                </span>
-              )}
+            <a
+              href={p.place_url}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-[#FEE500] px-4 py-3 text-neutral-900 transition-opacity hover:opacity-90"
+            >
+              <span className="text-left">
+                <span className="block text-sm font-semibold">카카오맵에서 보기</span>
+                <span className="block text-[11px] opacity-70">영업시간 · 메뉴 · 사진 확인하기</span>
+              </span>
+              <span aria-hidden className="text-lg leading-none">
+                ↗
+              </span>
+            </a>
+
+            {p.phone && (
               <a
-                href={p.place_url}
-                target="_blank"
-                rel="noreferrer"
+                href={`tel:${p.phone}`}
                 onClick={(e) => e.stopPropagation()}
-                className="rounded-xl border border-neutral-200 px-3 py-2 text-xs font-medium dark:border-neutral-700"
+                className="mt-1.5 block rounded-xl px-4 py-2 text-center text-xs text-neutral-500 underline underline-offset-2 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200"
               >
-                카카오맵
+                전화로 물어보기 {p.phone}
               </a>
-            </div>
+            )}
           </li>
         );
       })}

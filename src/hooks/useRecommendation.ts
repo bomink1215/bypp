@@ -3,7 +3,14 @@
 import { useCallback, useRef, useState, useSyncExternalStore } from 'react';
 
 import type { KakaoPlace, PlacesResponse } from '@/lib/kakao/types';
-import type { Candidate, CandidatesResponse, Menu, MenuFilters, Relaxation } from '@/lib/menu/types';
+import {
+  filtersToParams,
+  type Candidate,
+  type CandidatesResponse,
+  type Menu,
+  type MenuFilters,
+  type Relaxation,
+} from '@/lib/menu/types';
 import { EXPLORE_RATE, buildPreferenceModel } from '@/lib/preference/score';
 import {
   clearPreferences,
@@ -161,7 +168,7 @@ export function useRecommendation() {
           lng: String(query.coords.lng),
           walkMin: String(query.walkMin),
           at: query.at.toISOString(),
-          ...query.filters,
+          ...filtersToParams(query.filters),
         });
         const data = await getJson<CandidatesResponse>(
           `/api/candidates?${params}`,
@@ -193,18 +200,10 @@ export function useRecommendation() {
     setDecided(true);
   }, [menu, prefs]);
 
-  /** "별로예요" — 이 메뉴 자체가 싫다. 지속 감점 후 재추천. */
-  const dislike = useCallback(() => {
-    if (!menu) return;
-    const next = recordFeedback(prefs, menu.id, 'dislike');
-    setPreferences(next);
-    void selectAndLoad(next);
-  }, [menu, prefs, selectAndLoad]);
-
-  /** "다른거 추천해주세요" — 지금 안 당길 뿐이다. 당일만 제외하고 취향은 안 건드린다. */
+  /** "다른 거" — 당일 후보에서 빼고, 장기 취향에는 약하게만 반영한 뒤 다시 뽑는다. */
   const another = useCallback(() => {
     if (!menu) return;
-    const next = recordFeedback(prefs, menu.id, 'skip');
+    const next = recordFeedback(prefs, menu.id, 'pass');
     setPreferences(next);
     void selectAndLoad(next);
   }, [menu, prefs, selectAndLoad]);
@@ -222,7 +221,6 @@ export function useRecommendation() {
     feedbackCount: Object.keys(prefs.menus).length,
     start,
     like,
-    dislike,
     another,
     reset: clearPreferences,
   };

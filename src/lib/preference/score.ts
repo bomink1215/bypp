@@ -7,7 +7,7 @@ import type { PreferenceState } from './store';
  *
  * 두 층위로 배운다.
  *  - **메뉴 단위**: 그 메뉴 자체의 누적 평가.
- *  - **특성 단위**: cuisine / 매운맛 / 고기 / 국물 / 무게 축으로 전이. 마라탕에 좋아요를
+ *  - **특성 단위**: cuisine / 맛 3축 / 식재료 3종 / 국물 / 양으로 전이. 마라탕에 좋아요를
  *    누르면 안 눌러본 짬뽕도 같이 오른다. 메뉴 단위로만 배우면 50개를 다 눌러야 한다.
  *
  * 설계 원칙 3 — 학습이 탐색을 죽이면 안 된다. 그래서 가중치에 상하한을 두고,
@@ -45,7 +45,11 @@ function axesOf(menu: Menu): string[] {
   return [
     `cuisine:${menu.cuisine}`,
     `spicy:${menu.spicy >= 2 ? 'hot' : 'mild'}`,
-    `meat:${menu.meat.some((m) => m !== 'none') ? 'yes' : 'no'}`,
+    `richness:${menu.richness >= 2 ? 'rich' : 'light'}`,
+    `temperature:${menu.temperature >= 2 ? 'warm' : 'cool'}`,
+    `meat:${menu.meat ? 'yes' : 'no'}`,
+    `seafood:${menu.seafood ? 'yes' : 'no'}`,
+    `flour:${menu.flour ? 'yes' : 'no'}`,
     `soup:${menu.soup ? 'yes' : 'no'}`,
     `weight:${menu.weight}`,
   ];
@@ -85,14 +89,16 @@ export function buildPreferenceModel(state: PreferenceState, now = Date.now()): 
 
     const axes = axesOf(menu);
     let traitSum = 0;
-    let traitCount = 0;
     for (const axis of axes) {
       const acc = axisTotals.get(axis);
-      if (!acc) continue;
+      if (!acc) continue; // 기록이 없는 축은 0점(중립)으로 둔다
       traitSum += acc.sum / acc.count;
-      traitCount += 1;
     }
-    const traitScore = traitCount > 0 ? traitSum / traitCount : 0;
+
+    // 일치한 축만 골라 평균 내면 안 된다. 그러면 축 하나만 겹치는 메뉴가 일곱 개
+    // 겹치는 메뉴와 같은 점수를 받는다(마라탕에 좋아요를 눌렀더니 샐러드가 짬뽕만큼
+    // 오르던 버그). 전체 축 수로 나눠 "몇 개나 겹치는지"가 점수에 반영되게 한다.
+    const traitScore = traitSum / axes.length;
 
     const raw = 1 + MENU_WEIGHT * menuScore + TRAIT_WEIGHT * traitScore;
     return Math.min(BOOST_MAX, Math.max(BOOST_MIN, raw));

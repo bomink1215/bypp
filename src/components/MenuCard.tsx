@@ -8,29 +8,42 @@ type Props = {
   decided: boolean;
   busy: boolean;
   onLike: () => void;
-  onDislike: () => void;
   onAnother: () => void;
 };
 
 const RELAX_LABEL: Record<Relaxation, string> = {
   radius: '도보 시간',
-  spicy: '매운맛',
   meat: '고기',
-  soup: '국물',
+  seafood: '해물',
+  flour: '밀가루',
   weight: '양',
+  soup: '국물',
+  solo: '혼밥',
+  quick: '빨리 먹기',
 };
 
 function traits(menu: Menu): string[] {
   const out: string[] = [];
+
   if (menu.spicy >= 3) out.push('아주 매움');
   else if (menu.spicy === 2) out.push('매콤');
   else if (menu.spicy === 0) out.push('안 매움');
+
+  if (menu.richness >= 3) out.push('느끼');
+  else if (menu.richness === 0) out.push('담백');
+
+  if (menu.temperature === 0) out.push('차가움');
+  else if (menu.temperature >= 3) out.push('뜨끈');
+
   if (menu.soup) out.push('국물');
+  if (menu.solo) out.push('혼밥 가능');
+  if (menu.quick) out.push('빨리 먹기');
+
   out.push(menu.weight === 'heavy' ? '든든' : menu.weight === 'light' ? '가벼움' : '보통');
   return out;
 }
 
-export function MenuCard({ menu, relaxed, decided, busy, onLike, onDislike, onAnother }: Props) {
+export function MenuCard({ menu, relaxed, decided, busy, onLike, onAnother }: Props) {
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
       <p className="text-xs text-neutral-500 dark:text-neutral-400">오늘의 추천</p>
@@ -59,38 +72,24 @@ export function MenuCard({ menu, relaxed, decided, busy, onLike, onDislike, onAn
           맛있게 드세요! 아래에서 가게를 골라보세요.
         </p>
       ) : (
-        <div className="mt-5 grid grid-cols-3 gap-2">
+        <div className="mt-5 grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={onLike}
             disabled={busy}
-            className="rounded-xl bg-neutral-900 px-3 py-3 text-sm font-medium text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+            className="rounded-xl bg-neutral-900 px-3 py-3.5 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
           >
             좋아요
           </button>
           <button
             type="button"
-            onClick={onDislike}
-            disabled={busy}
-            className="rounded-xl border border-neutral-200 px-3 py-3 text-sm font-medium disabled:opacity-40 dark:border-neutral-700"
-          >
-            별로예요
-          </button>
-          <button
-            type="button"
             onClick={onAnother}
             disabled={busy}
-            className="rounded-xl border border-neutral-200 px-3 py-3 text-sm font-medium disabled:opacity-40 dark:border-neutral-700"
+            className="rounded-xl border border-neutral-200 px-3 py-3.5 text-sm font-medium disabled:opacity-40 dark:border-neutral-700"
           >
-            다른 거
+            다른 거 추천
           </button>
         </div>
-      )}
-
-      {!decided && (
-        <p className="mt-2 text-center text-[11px] text-neutral-400">
-          &lsquo;별로예요&rsquo;는 취향에 계속 반영되고, &lsquo;다른 거&rsquo;는 오늘만 넘겨요.
-        </p>
       )}
     </div>
   );

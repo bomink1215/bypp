@@ -22,9 +22,10 @@ export type Cuisine =
   | 'chicken'
   | 'fastfood';
 
-export type MeatKind = 'pork' | 'beef' | 'chicken' | 'seafood' | 'none';
-
 export type Weight = 'light' | 'normal' | 'heavy';
+
+/** 0~3 눈금. 맛 슬라이더 세 축이 공유한다. */
+export type Level = 0 | 1 | 2 | 3;
 
 export type Menu = {
   id: string;
@@ -33,9 +34,29 @@ export type Menu = {
   cuisine: Cuisine;
   /** 카카오 category_name에서 매칭할 조각. 예: ['한식', '국밥'] */
   kakaoCategories: string[];
-  spicy: 0 | 1 | 2 | 3;
-  meat: MeatKind[];
+
+  // ── 맛 (양극단 사이의 위치) ──
+  /** 0 순함 ~ 3 매움 */
+  spicy: Level;
+  /** 0 담백함 ~ 3 느끼함 */
+  richness: Level;
+  /** 0 시원함 ~ 3 뜨끈함 */
+  temperature: Level;
+
+  // ── 식재료 ──
+  /** 육류(돼지·소·닭) 포함 여부. 해물은 별도 축이다. */
+  meat: boolean;
+  seafood: boolean;
+  /** 면·빵·튀김옷 등 밀가루. 쌀국수처럼 쌀로 만든 면은 false. */
+  flour: boolean;
+
+  // ── 기타 ──
   soup: boolean;
+  /** 혼자 먹기 괜찮은가. 삼겹살·족발처럼 2인분부터인 것은 false. */
+  solo: boolean;
+  /** 빨리 먹고 나올 수 있는가. 굽거나 끓여 먹는 것은 false. */
+  quick: boolean;
+
   weight: Weight;
 };
 
@@ -48,34 +69,65 @@ export type Band =
   | 'dinner' // 17-21
   | 'latenight'; // 21-24
 
-export type SpicyPreference = 'any' | 'none' | 'mild' | 'hot';
-export type MeatPreference = 'any' | 'required' | 'none';
-export type SoupPreference = 'any' | 'yes' | 'no';
-export type WeightPreference = 'any' | 'light' | 'heavy';
+/**
+ * 맛 슬라이더의 값. `null`이면 상관없음.
+ *
+ * 하드 필터가 아니라 목표값이다. 목표에서 멀수록 급격히 불리해지지만 0이 되지는
+ * 않는다(원칙 3). 슬라이더를 "매움" 끝에 두면 순한 메뉴가 사실상 안 나오되,
+ * 우리가 매운맛을 잘못 매긴 메뉴가 영영 묻히지는 않는다.
+ */
+export type Taste = Level | null;
+
+/** 식재료·기타처럼 있음/없음이 분명한 축. 이쪽은 하드 필터다. */
+export type Toggle = 'any' | 'yes' | 'no';
 
 export type MenuFilters = {
-  spicy: SpicyPreference;
-  meat: MeatPreference;
-  soup: SoupPreference;
-  weight: WeightPreference;
+  // 맛 — 소프트
+  spicy: Taste;
+  richness: Taste;
+  temperature: Taste;
+  // 식재료 — 하드
+  meat: Toggle;
+  seafood: Toggle;
+  flour: Toggle;
+  // 양 — 하드
+  weight: 'any' | 'light' | 'heavy';
+  // 기타 — 하드
+  soup: Toggle;
+  solo: Toggle;
+  quick: Toggle;
 };
 
 export const DEFAULT_FILTERS: MenuFilters = {
-  spicy: 'any',
+  spicy: null,
+  richness: null,
+  temperature: null,
   meat: 'any',
-  soup: 'any',
+  seafood: 'any',
+  flour: 'any',
   weight: 'any',
+  soup: 'any',
+  solo: 'any',
+  quick: 'any',
 };
 
 /** 어떤 제약을 완화했는지 UI에 그대로 보여주기 위한 태그. 조용히 넓히지 않는다. */
-export type Relaxation = 'radius' | 'spicy' | 'meat' | 'soup' | 'weight';
+export type Relaxation =
+  | 'radius'
+  | 'meat'
+  | 'seafood'
+  | 'flour'
+  | 'weight'
+  | 'soup'
+  | 'solo'
+  | 'quick';
 
 /** 서버가 클라이언트에 넘기는 후보 1건. 선호도는 여기 반영되지 않는다. */
 export type Candidate = {
   menu: Menu;
-  /** 시간대 가중치까지 반영된 기본 점수. 클라이언트가 여기에 선호도를 곱한다. */
+  /** 시간대 가중치와 맛 적합도까지 반영된 기본 점수. 클라이언트가 여기에 선호도를 곱한다. */
   baseScore: number;
-  /** 반경 안에서 이 메뉴의 업종으로 잡힌 가게 수. 후보 존재의 근거. */
+  /** 반경 안에서 이 메뉴의 업종으로 잡힌 가게 수. 표본일 때는 0일 수 있다. */
   nearbyCount: number;
 };
 
@@ -85,3 +137,20 @@ export type CandidatesResponse = {
   radius: number;
   relaxed: Relaxation[];
 };
+
+/** URL 쿼리로 보내기 위한 직렬화. 슬라이더의 null은 키를 생략해 표현한다. */
+export function filtersToParams(f: MenuFilters): Record<string, string> {
+  const out: Record<string, string> = {
+    meat: f.meat,
+    seafood: f.seafood,
+    flour: f.flour,
+    weight: f.weight,
+    soup: f.soup,
+    solo: f.solo,
+    quick: f.quick,
+  };
+  if (f.spicy !== null) out.spicy = String(f.spicy);
+  if (f.richness !== null) out.richness = String(f.richness);
+  if (f.temperature !== null) out.temperature = String(f.temperature);
+  return out;
+}

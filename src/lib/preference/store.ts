@@ -11,7 +11,7 @@
 
 const KEY = 'bypp.preferences.v1';
 
-export type Feedback = 'like' | 'dislike' | 'skip';
+export type Feedback = 'like' | 'pass';
 
 export type MenuStat = {
   likes: number;
@@ -23,7 +23,7 @@ export type MenuStat = {
 export type PreferenceState = {
   version: 1;
   menus: Record<string, MenuStat>;
-  /** "다른거 추천해주세요"로 넘긴 메뉴. 당일만 제외하고 장기 선호는 건드리지 않는다. */
+  /** 넘긴 메뉴. 당일 후보에서 빼는 용도. */
   skipped: { date: string; menuIds: string[] };
 };
 
@@ -70,36 +70,39 @@ export function resetPreferences(): void {
 }
 
 /**
- * 피드백을 반영한 새 상태를 만든다.
+ * 넘겼을 때 붙는 감점의 크기.
  *
- * `skip`("다른거")은 `menus` 통계를 건드리지 않는다. 오늘 점심에 국밥이 안 당긴 것과
- * 국밥을 싫어하는 것은 다르다. 둘을 같이 취급하면 한두 번 넘긴 메뉴가 영영 사라진다.
+ * 1이 아니라 0.4인 이유: "다른 거"는 "이 메뉴가 싫다"와 "지금은 안 당긴다"가 섞인
+ * 신호다. 오늘 점심에 국밥이 안 당긴 것을 국밥을 싫어하는 것과 똑같이 취급하면
+ * 한두 번 넘긴 메뉴가 영영 사라진다. 그래서 당일 후보에서는 바로 빼되(확실한 의사),
+ * 장기 취향에는 약하게만 반영한다. 반복해서 넘기면 그때는 쌓여서 제대로 내려간다.
  */
+const PASS_PENALTY = 0.4;
+
+/** 피드백을 반영한 새 상태를 만든다. */
 export function recordFeedback(
   state: PreferenceState,
   menuId: string,
   feedback: Feedback,
 ): PreferenceState {
-  if (feedback === 'skip') {
-    const menuIds = state.skipped.menuIds.includes(menuId)
-      ? state.skipped.menuIds
-      : [...state.skipped.menuIds, menuId];
-    return { ...state, skipped: { date: today(), menuIds } };
-  }
-
   const prev = state.menus[menuId] ?? { likes: 0, dislikes: 0, lastFeedbackAt: 0 };
 
-  return {
-    ...state,
-    menus: {
-      ...state.menus,
-      [menuId]: {
-        likes: prev.likes + (feedback === 'like' ? 1 : 0),
-        dislikes: prev.dislikes + (feedback === 'dislike' ? 1 : 0),
-        lastFeedbackAt: Date.now(),
-      },
+  const menus = {
+    ...state.menus,
+    [menuId]: {
+      likes: prev.likes + (feedback === 'like' ? 1 : 0),
+      dislikes: prev.dislikes + (feedback === 'pass' ? PASS_PENALTY : 0),
+      lastFeedbackAt: Date.now(),
     },
   };
+
+  if (feedback === 'like') return { ...state, menus };
+
+  const menuIds = state.skipped.menuIds.includes(menuId)
+    ? state.skipped.menuIds
+    : [...state.skipped.menuIds, menuId];
+
+  return { ...state, menus, skipped: { date: today(), menuIds } };
 }
 
 export function isSkippedToday(state: PreferenceState, menuId: string): boolean {

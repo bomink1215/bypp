@@ -2,25 +2,58 @@ import type { KakaoPlace } from './kakao/types';
 import { menuMatchesCategory } from './menu/category-map';
 import { openLikelihood } from './menu/hours';
 import { MENUS } from './menu/seed';
-import type { Candidate, Menu, MenuFilters, Relaxation } from './menu/types';
+import type { Candidate, Menu, MenuFilters, Relaxation, Taste } from './menu/types';
 
-/** 사용자가 명시적으로 켠 특성은 하드 필터다. 시간대와 달리 추정이 아니라 요구사항이다. */
+/**
+ * 식재료·양·기타는 하드 필터다. 시간대와 달리 추정이 아니라 사용자의 요구사항이고,
+ * 특히 식재료는 알레르기나 채식 같은 이유일 수 있어 어기면 안 된다.
+ */
 export function matchesFilters(menu: Menu, f: MenuFilters): boolean {
-  if (f.spicy === 'none' && menu.spicy !== 0) return false;
-  if (f.spicy === 'mild' && menu.spicy > 1) return false;
-  if (f.spicy === 'hot' && menu.spicy < 2) return false;
+  if (f.meat === 'yes' && !menu.meat) return false;
+  if (f.meat === 'no' && menu.meat) return false;
 
-  const hasMeat = menu.meat.some((m) => m !== 'none');
-  if (f.meat === 'required' && !hasMeat) return false;
-  if (f.meat === 'none' && hasMeat) return false;
+  if (f.seafood === 'yes' && !menu.seafood) return false;
+  if (f.seafood === 'no' && menu.seafood) return false;
+
+  if (f.flour === 'yes' && !menu.flour) return false;
+  if (f.flour === 'no' && menu.flour) return false;
 
   if (f.soup === 'yes' && !menu.soup) return false;
   if (f.soup === 'no' && menu.soup) return false;
+
+  if (f.solo === 'yes' && !menu.solo) return false;
+  if (f.solo === 'no' && menu.solo) return false;
+
+  if (f.quick === 'yes' && !menu.quick) return false;
+  if (f.quick === 'no' && menu.quick) return false;
 
   if (f.weight === 'light' && menu.weight !== 'light') return false;
   if (f.weight === 'heavy' && menu.weight !== 'heavy') return false;
 
   return true;
+}
+
+/** 목표에서 한 칸 멀어질 때마다 곱해지는 값. 사실상 필터처럼 걸러내되 0은 아니다. */
+const TASTE_FALLOFF = 0.2;
+
+function tasteFit(value: number, target: Taste): number {
+  if (target === null) return 1;
+  return TASTE_FALLOFF ** Math.abs(value - target);
+}
+
+/**
+ * 맛 3축의 적합도.
+ *
+ * 하드 필터가 아니라 목표값이다. 슬라이더를 "매움" 끝에 두면 순한 메뉴는 0.008배까지
+ * 떨어져 사실상 안 나오지만, 완전히 0은 아니다 — 우리가 매운맛을 잘못 매긴 메뉴가
+ * 영영 묻히지 않게 하기 위해서다(원칙 3).
+ */
+export function tasteScore(menu: Menu, f: MenuFilters): number {
+  return (
+    tasteFit(menu.spicy, f.spicy) *
+    tasteFit(menu.richness, f.richness) *
+    tasteFit(menu.temperature, f.temperature)
+  );
 }
 
 /**
@@ -55,7 +88,7 @@ export function buildCandidates(
 
     candidates.push({
       menu,
-      baseScore: openLikelihood(menu.cuisine, at) * density,
+      baseScore: openLikelihood(menu.cuisine, at) * density * tasteScore(menu, filters),
       nearbyCount,
     });
   }
@@ -63,8 +96,14 @@ export function buildCandidates(
   return candidates.sort((a, b) => b.baseScore - a.baseScore);
 }
 
-/** 완화 우선순위. 덜 중요한 것부터 푼다. 매운맛 선호를 가장 늦게 푸는 건 의도다. */
-const RELAX_ORDER = ['weight', 'soup', 'meat', 'spicy'] as const;
+/**
+ * 완화 우선순위. 덜 중요한 것부터 푼다.
+ *
+ * 식재료(밀가루·해물·고기)를 가장 늦게 푸는 건 의도다. 알레르기나 채식일 수 있어
+ * 어기면 단순히 아쉬운 게 아니라 못 먹는 걸 추천하는 셈이 된다.
+ * 맛 3축은 소프트 점수라 후보를 지우지 않으므로 완화 대상이 아니다.
+ */
+const RELAX_ORDER = ['quick', 'solo', 'weight', 'soup', 'flour', 'seafood', 'meat'] as const;
 
 export type DerivedCandidates = {
   candidates: Candidate[];
@@ -103,7 +142,7 @@ export function deriveCandidates(
     return { candidates, relaxed: ['radius'], radius: widenedRadius };
   }
 
-  // 2단계: 특성 필터를 하나씩 푼다.
+  // 2단계: 하드 필터를 하나씩 푼다.
   const relaxed: Relaxation[] = ['radius'];
   const working: MenuFilters = { ...filters };
 
