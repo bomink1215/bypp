@@ -56,6 +56,12 @@ export type Menu = {
   solo: boolean;
   /** 빨리 먹고 나올 수 있는가. 굽거나 끓여 먹는 것은 false. */
   quick: boolean;
+  /**
+   * 격식 있는 자리(윗사람 대접, 상견례, 접대)에 내놓을 만한 메뉴인가.
+   * **메뉴에 대한 판단이지 가게에 대한 보증이 아니다** — 카카오는 가게 분위기를 알려주지
+   * 않는다(원칙 1). 그래서 화면에서도 가게 분위기는 카카오맵에서 확인하라고 안내한다.
+   */
+  formal: boolean;
 
   weight: Weight;
 };
@@ -96,6 +102,7 @@ export type MenuFilters = {
   soup: Toggle;
   solo: Toggle;
   quick: Toggle;
+  formal: Toggle;
 };
 
 export const DEFAULT_FILTERS: MenuFilters = {
@@ -109,6 +116,7 @@ export const DEFAULT_FILTERS: MenuFilters = {
   soup: 'any',
   solo: 'any',
   quick: 'any',
+  formal: 'any',
 };
 
 /** 어떤 제약을 완화했는지 UI에 그대로 보여주기 위한 태그. 조용히 넓히지 않는다. */
@@ -120,7 +128,8 @@ export type Relaxation =
   | 'weight'
   | 'soup'
   | 'solo'
-  | 'quick';
+  | 'quick'
+  | 'formal';
 
 /** 서버가 클라이언트에 넘기는 후보 1건. 선호도는 여기 반영되지 않는다. */
 export type Candidate = {
@@ -148,6 +157,7 @@ export function filtersToParams(f: MenuFilters): Record<string, string> {
     soup: f.soup,
     solo: f.solo,
     quick: f.quick,
+    formal: f.formal,
   };
   if (f.spicy !== null) out.spicy = String(f.spicy);
   if (f.richness !== null) out.richness = String(f.richness);

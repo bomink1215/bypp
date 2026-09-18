@@ -89,7 +89,7 @@ export function PlaceMap({ center, places, selectedId, onSelect }: Props) {
 
   if (!JS_KEY) {
     return (
-      <div className="flex h-full min-h-[240px] items-center justify-center rounded-2xl border border-dashed border-neutral-300 p-6 text-center text-xs text-neutral-500 dark:border-neutral-700">
+      <div className="flex h-full min-h-[240px] items-center justify-center rounded-2xl border border-dashed border-neutral-300 p-6 text-center text-xs text-neutral-500">
         지도를 보려면 <code className="mx-1">NEXT_PUBLIC_KAKAO_JS_KEY</code>를 설정하고, 그 키의
         JavaScript SDK 도메인에 <code className="mx-1">http://localhost:3000</code>을 등록하세요.
       </div>
@@ -105,7 +105,7 @@ export function PlaceMap({ center, places, selectedId, onSelect }: Props) {
       />
       <div
         ref={containerRef}
-        className="h-full min-h-[240px] w-full overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-800"
+        className="h-full min-h-[240px] w-full overflow-hidden rounded-2xl border border-neutral-200"
       />
     </>
   );

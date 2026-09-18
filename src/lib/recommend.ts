@@ -28,6 +28,9 @@ export function matchesFilters(menu: Menu, f: MenuFilters): boolean {
   if (f.quick === 'yes' && !menu.quick) return false;
   if (f.quick === 'no' && menu.quick) return false;
 
+  if (f.formal === 'yes' && !menu.formal) return false;
+  if (f.formal === 'no' && menu.formal) return false;
+
   if (f.weight === 'light' && menu.weight !== 'light') return false;
   if (f.weight === 'heavy' && menu.weight !== 'heavy') return false;
 
@@ -121,8 +124,11 @@ export function buildCandidates({
  * 식재료(밀가루·해물·고기)를 가장 늦게 푸는 건 의도다. 알레르기나 채식일 수 있어
  * 어기면 단순히 아쉬운 게 아니라 못 먹는 걸 추천하는 셈이 된다.
  * 맛 3축은 소프트 점수라 후보를 지우지 않으므로 완화 대상이 아니다.
+ *
+ * 격식(formal)은 편의 조건들보다 뒤에 둔다. 윗사람 대접 자리에 분식이 뜨는 건 "아쉬운"
+ * 정도가 아니다. 그래도 식재료보다는 앞이다 — 못 먹는 걸 내놓는 것보다는 낫다.
  */
-const RELAX_ORDER = ['quick', 'solo', 'weight', 'soup', 'flour', 'seafood', 'meat'] as const;
+const RELAX_ORDER = ['quick', 'solo', 'weight', 'soup', 'formal', 'flour', 'seafood', 'meat'] as const;
 
 export type DerivedCandidates = {
   candidates: Candidate[];

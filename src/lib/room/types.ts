@@ -72,5 +72,9 @@ export function generateRoomCode(): string {
   return out;
 }
 
-/** 방 유효 시간. 한 끼 정하는 용도라 하루면 충분하다. */
+/**
+ * 방 유효 시간. 만든 시점부터 최소 이만큼, 그리고 약속 시각이 지나고도 `ROOM_AFTER_MEAL_HOURS`
+ * 동안은 산다. 며칠 뒤 약속으로 만든 방이 그 전에 만료되면 안 된다.
+ */
 export const ROOM_TTL_HOURS = 24;
+export const ROOM_AFTER_MEAL_HOURS = 12;

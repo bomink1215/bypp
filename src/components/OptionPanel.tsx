@@ -7,7 +7,7 @@ import { walkMinutesToRadius } from '@/lib/distance';
 import { RESTRICTIONS, RESTRICTION_LABEL, type Restriction } from '@/lib/menu/restrictions';
 import type { MenuFilters, Taste, Toggle } from '@/lib/menu/types';
 import { REGIONS } from '@/lib/regions';
-import { formatWhen, type When } from '@/lib/when';
+import { defaultHour, formatHour, formatWhen, HOURS, type When } from '@/lib/when';
 import type { Coords, GeoStatus } from '@/hooks/useGeolocation';
 
 type Props = {
@@ -29,8 +29,6 @@ type Props = {
   hideLocationAndTime?: boolean;
 };
 
-const HOURS = [7, 8, 9, 11, 12, 13, 15, 17, 18, 19, 20, 21, 22, 23, 1, 3];
-
 function Chip({
   active,
   onClick,
@@ -47,8 +45,8 @@ function Chip({
       aria-pressed={active}
       className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
         active
-          ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
-          : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
+          ? 'bg-neutral-900 text-white'
+          : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
       }`}
     >
       {children}
@@ -58,7 +56,7 @@ function Chip({
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-3 border-t border-neutral-100 pt-4 first:border-0 first:pt-0 dark:border-neutral-800">
+    <section className="space-y-3 border-t border-neutral-100 pt-4 first:border-0 first:pt-0">
       <h3 className="text-xs font-semibold tracking-wide text-neutral-400">{title}</h3>
       {children}
     </section>
@@ -102,7 +100,7 @@ function TasteBar({
           <button
             type="button"
             onClick={() => onChange(null)}
-            className="shrink-0 text-[11px] text-neutral-400 underline underline-offset-2 hover:text-neutral-600 dark:hover:text-neutral-300"
+            className="shrink-0 text-[11px] text-neutral-400 underline underline-offset-2 hover:text-neutral-600"
           >
             상관없음으로
           </button>
@@ -119,7 +117,7 @@ function TasteBar({
         {/* 가운데가 어디인지 눈으로 알 수 있게 눈금을 하나 둔다. */}
         <span
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 h-3 w-px -translate-x-1/2 -translate-y-1/2 bg-neutral-200 dark:bg-neutral-700"
+          className="pointer-events-none absolute left-1/2 top-1/2 h-3 w-px -translate-x-1/2 -translate-y-1/2 bg-neutral-200"
         />
         <input
           type="range"
@@ -130,8 +128,8 @@ function TasteBar({
           onChange={(e) => onChange(POSITIONS[Number(e.target.value)])}
           className={`relative w-full ${
             active
-              ? 'accent-neutral-900 dark:accent-white'
-              : 'accent-neutral-300 dark:accent-neutral-600'
+              ? 'text-brand'
+              : 'text-neutral-400'
           }`}
           aria-label={`${left} ↔ ${right}`}
           aria-valuetext={active ? (pos < CENTER ? left : right) : '상관없음'}
@@ -195,14 +193,14 @@ export function OptionPanel({
     onFiltersChange({ ...filters, [key]: value });
 
   return (
-    <div className="space-y-5 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="space-y-5 rounded-2xl border border-neutral-200 bg-white p-4">
       {/*
         못 먹는 것은 매번 고르는 옵션이 아니라 저장되는 설정이다. 섞이면 "오늘은 고기 말고"와
         "고기를 못 먹는다"를 혼동하게 되므로 배경을 달리해 시각적으로 떼어놓는다.
       */}
-      <section className="-m-1 space-y-2.5 rounded-xl bg-neutral-50 p-3 dark:bg-neutral-800/50">
+      <section className="-m-1 space-y-2.5 rounded-xl bg-neutral-50 p-3">
         <div className="flex items-baseline justify-between gap-2">
-          <h3 className="text-xs font-semibold tracking-wide text-neutral-500 dark:text-neutral-400">
+          <h3 className="text-xs font-semibold tracking-wide text-neutral-500">
             못 먹는 것
           </h3>
           <span className="text-[11px] text-neutral-400">
@@ -242,14 +240,14 @@ export function OptionPanel({
               <button
                 type="button"
                 onClick={onRequestLocation}
-                className="underline underline-offset-2 hover:text-neutral-800 dark:hover:text-neutral-200"
+                className="underline underline-offset-2 hover:text-neutral-800"
               >
                 현재 위치
               </button>
               <button
                 type="button"
                 onClick={() => setPicking(true)}
-                className="underline underline-offset-2 hover:text-neutral-800 dark:hover:text-neutral-200"
+                className="underline underline-offset-2 hover:text-neutral-800"
               >
                 지도에서
               </button>
@@ -261,14 +259,14 @@ export function OptionPanel({
               type="button"
               onClick={onRequestLocation}
               disabled={geoStatus === 'loading'}
-              className="w-full rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
+              className="w-full rounded-xl bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-brand/25 transition-colors hover:bg-brand-strong disabled:opacity-50"
             >
               {geoStatus === 'loading' ? '위치 확인 중…' : '현재 위치 사용'}
             </button>
 
             {/* 권한 거부는 흔하다. 폴백이 없으면 그 사용자는 아무것도 못 한다. */}
             {(geoStatus === 'denied' || geoStatus === 'unavailable') && (
-              <p className="text-xs text-amber-600 dark:text-amber-500">
+              <p className="text-xs text-amber-600">
                 {geoStatus === 'denied'
                   ? '위치 권한이 거부됐어요. 지역을 직접 골라주세요.'
                   : '이 브라우저에서 위치를 쓸 수 없어요. 지역을 직접 골라주세요.'}
@@ -278,7 +276,7 @@ export function OptionPanel({
             <button
               type="button"
               onClick={() => setPicking(true)}
-              className="w-full rounded-xl border border-neutral-200 px-4 py-2.5 text-sm font-medium dark:border-neutral-700"
+              className="w-full rounded-xl border border-neutral-200 px-4 py-2.5 text-sm font-medium"
             >
               지도에서 직접 찍기
             </button>
@@ -289,7 +287,7 @@ export function OptionPanel({
                 const r = REGIONS.find((x) => x.id === e.target.value);
                 if (r) onPickRegion({ lat: r.lat, lng: r.lng }, r.name);
               }}
-              className="w-full rounded-xl border border-neutral-200 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"
+              className="w-full rounded-xl border border-neutral-200 bg-transparent px-3 py-2.5 text-sm"
             >
               <option value="" disabled>
                 지역 직접 선택
@@ -308,27 +306,22 @@ export function OptionPanel({
             지금
           </Chip>
           <Chip
-            active={when.kind === 'today'}
-            onClick={() => onWhenChange({ kind: 'today', hour: 12 })}
+            active={when.kind !== 'now'}
+            onClick={() => when.kind === 'now' && onWhenChange({ kind: 'hour', hour: defaultHour() })}
           >
-            오늘
-          </Chip>
-          <Chip
-            active={when.kind === 'tomorrow'}
-            onClick={() => onWhenChange({ kind: 'tomorrow', hour: 12 })}
-          >
-            내일
+            시간 설정
           </Chip>
 
+          {/* 날짜는 묻지 않는다. 지난 시각을 고르면 내일 그 시각이다(lib/when.ts). */}
           {when.kind !== 'now' && (
             <select
               value={when.hour}
-              onChange={(e) => onWhenChange({ kind: when.kind, hour: Number(e.target.value) })}
-              className="rounded-full border border-neutral-200 bg-transparent px-3 py-1.5 text-sm dark:border-neutral-700"
+              onChange={(e) => onWhenChange({ kind: 'hour', hour: Number(e.target.value) })}
+              className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-sm"
             >
               {HOURS.map((h) => (
                 <option key={h} value={h}>
-                  {h < 12 ? '오전' : '오후'} {h % 12 === 0 ? 12 : h % 12}시
+                  {formatHour(h)}
                 </option>
               ))}
             </select>
@@ -348,7 +341,7 @@ export function OptionPanel({
             step={1}
             value={walkMin}
             onChange={(e) => onWalkMinChange(Number(e.target.value))}
-            className="mt-1.5 w-full accent-neutral-900 dark:accent-white"
+            className="mt-1.5 w-full text-brand"
             aria-label="도보 시간"
           />
           <p className="text-[11px] text-neutral-400">
@@ -415,6 +408,19 @@ export function OptionPanel({
             yes="가능한 것"
             no="천천히"
           />
+          <ToggleRow
+            label="격식"
+            value={filters.formal}
+            onChange={(v) => set('formal', v)}
+            yes="격식 있게"
+            no="편하게"
+          />
+          {/* 메뉴까지만 약속한다. 가게 분위기는 카카오도 알려주지 않는다(원칙 1). */}
+          {filters.formal === 'yes' && (
+            <p className="text-[11px] leading-relaxed text-neutral-400">
+              대접하기 좋은 메뉴로 골라요. 가게 분위기와 룸 여부는 카카오맵에서 확인하세요.
+            </p>
+          )}
         </div>
       </Group>
     </div>

@@ -62,5 +62,6 @@ export function parseFilters(sp: URLSearchParams): MenuFilters {
     soup: parseToggle(sp.get('soup')),
     solo: parseToggle(sp.get('solo')),
     quick: parseToggle(sp.get('quick')),
+    formal: parseToggle(sp.get('formal')),
   };
 }

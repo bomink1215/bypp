@@ -5,15 +5,26 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 import { AuthBar } from '@/components/AuthBar';
+import { Brand } from '@/components/Brand';
 import { LocationPicker } from '@/components/LocationPicker';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { getSavedNickname, getToken, saveNickname } from '@/hooks/useRoom';
 import { walkMinutesToRadius } from '@/lib/distance';
 import { REGIONS } from '@/lib/regions';
-import { formatWhen, resolveWhen, type When } from '@/lib/when';
+import {
+  addDays,
+  defaultDate,
+  defaultHour,
+  formatHour,
+  formatWhen,
+  HOURS,
+  isPast,
+  MAX_DAYS_AHEAD,
+  resolveWhen,
+  toDateInput,
+  type When,
+} from '@/lib/when';
 import type { CreateRoomResponse } from '@/app/api/rooms/route';
-
-const HOURS = [7, 8, 9, 11, 12, 13, 15, 17, 18, 19, 20, 21, 22, 23, 1, 3];
 
 /**
  * 방 만들기 / 코드로 입장.
@@ -35,7 +46,13 @@ export default function RoomEntryPage() {
   const [error, setError] = useState<string | null>(null);
 
   const eatAt = useMemo(() => resolveWhen(when), [when]);
-  const canCreate = Boolean(geo.coords) && nickname.trim().length > 0 && !busy;
+  const past = useMemo(() => isPast(when), [when]);
+  // 오늘부터 MAX_DAYS_AHEAD일 뒤까지. 방은 그 약속이 지날 때까지 살아 있어야 한다.
+  const dateRange = useMemo(() => {
+    const today = new Date();
+    return { min: toDateInput(today), max: toDateInput(addDays(today, MAX_DAYS_AHEAD)) };
+  }, []);
+  const canCreate = Boolean(geo.coords) && nickname.trim().length > 0 && !past && !busy;
 
   const create = async () => {
     if (!geo.coords) return;
@@ -68,23 +85,24 @@ export default function RoomEntryPage() {
   return (
     <main className="mx-auto w-full max-w-lg flex-1 space-y-5 px-4 py-6">
       <div className="flex items-center justify-between gap-2">
-        <Link
-          href="/recommend"
-          className="text-xs text-neutral-500 underline underline-offset-2 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200"
-        >
-          ← 혼자 고르기
-        </Link>
+        <Brand />
         <AuthBar />
       </div>
 
       <header>
-        <h1 className="text-2xl font-bold tracking-tight">친구와 함께 정하기</h1>
-        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+        <Link
+          href="/recommend"
+          className="text-xs text-neutral-500 underline underline-offset-2 hover:text-neutral-800"
+        >
+          ← 혼자 고르기
+        </Link>
+        <h1 className="mt-2 text-2xl font-black tracking-tight">친구와 함께 정하기</h1>
+        <p className="mt-1 text-sm text-neutral-500">
           만날 곳과 시간을 정하고 링크를 공유하면, 각자 조건을 내고 투표해서 정해요.
         </p>
       </header>
 
-      <section className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+      <section className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-4">
         <div className="space-y-2">
           <h2 className="text-xs font-semibold tracking-wide text-neutral-400">어디서 만나나요?</h2>
 
@@ -100,7 +118,7 @@ export default function RoomEntryPage() {
           ) : (
             <>
               {geo.status === 'ready' && (
-                <p className="rounded-xl bg-neutral-50 px-3 py-2.5 text-sm font-medium dark:bg-neutral-800/50">
+                <p className="rounded-xl bg-neutral-50 px-3 py-2.5 text-sm font-medium">
                   {geo.label}
                 </p>
               )}
@@ -109,7 +127,7 @@ export default function RoomEntryPage() {
                 <button
                   type="button"
                   onClick={() => setPicking(true)}
-                  className="rounded-xl border border-neutral-200 px-3 py-2.5 text-sm font-medium dark:border-neutral-700"
+                  className="rounded-xl border border-neutral-200 px-3 py-2.5 text-sm font-medium"
                 >
                   지도에서 찍기
                 </button>
@@ -117,7 +135,7 @@ export default function RoomEntryPage() {
                   type="button"
                   onClick={geo.request}
                   disabled={geo.status === 'loading'}
-                  className="rounded-xl border border-neutral-200 px-3 py-2.5 text-sm font-medium disabled:opacity-50 dark:border-neutral-700"
+                  className="rounded-xl border border-neutral-200 px-3 py-2.5 text-sm font-medium disabled:opacity-50"
                 >
                   {geo.status === 'loading' ? '확인 중…' : '현재 위치'}
                 </button>
@@ -129,7 +147,7 @@ export default function RoomEntryPage() {
                   const r = REGIONS.find((x) => x.id === e.target.value);
                   if (r) geo.setManual({ lat: r.lat, lng: r.lng }, r.name);
                 }}
-                className="w-full rounded-xl border border-neutral-200 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"
+                className="w-full rounded-xl border border-neutral-200 bg-transparent px-3 py-2.5 text-sm"
               >
                 <option value="" disabled>
                   지역으로 선택
@@ -147,43 +165,68 @@ export default function RoomEntryPage() {
           </p>
         </div>
 
-        <div className="space-y-2 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+        <div className="space-y-2 border-t border-neutral-100 pt-4">
           <h2 className="text-xs font-semibold tracking-wide text-neutral-400">언제 먹나요?</h2>
           <div className="flex flex-wrap items-center gap-2">
-            {(['now', 'today', 'tomorrow'] as const).map((kind) => (
+            {(['now', 'date'] as const).map((kind) => (
               <button
                 key={kind}
                 type="button"
-                onClick={() => setWhen(kind === 'now' ? { kind } : { kind, hour: 12 })}
+                onClick={() =>
+                  when.kind !== kind &&
+                  setWhen(
+                    kind === 'now'
+                      ? { kind }
+                      : { kind, date: defaultDate(), hour: defaultHour() },
+                  )
+                }
                 aria-pressed={when.kind === kind}
                 className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
                   when.kind === kind
-                    ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
-                    : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'
+                    ? 'bg-neutral-900 text-white'
+                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
                 }`}
               >
-                {kind === 'now' ? '지금' : kind === 'today' ? '오늘' : '내일'}
+                {kind === 'now' ? '지금' : '날짜·시간 설정'}
               </button>
             ))}
-
-            {when.kind !== 'now' && (
-              <select
-                value={when.hour}
-                onChange={(e) => setWhen({ kind: when.kind, hour: Number(e.target.value) })}
-                className="rounded-full border border-neutral-200 bg-transparent px-3 py-1.5 text-sm dark:border-neutral-700"
-              >
-                {HOURS.map((h) => (
-                  <option key={h} value={h}>
-                    {h < 12 ? '오전' : '오후'} {h % 12 === 0 ? 12 : h % 12}시
-                  </option>
-                ))}
-              </select>
-            )}
-            <span className="text-xs text-neutral-400">{formatWhen(when)}</span>
+            {when.kind === 'now' && <span className="text-xs text-neutral-400">바로 만나요</span>}
           </div>
+
+          {/* 약속은 며칠 뒤일 수 있다. 혼자 고르기와 달리 날짜를 받는다(lib/when.ts). */}
+          {when.kind === 'date' && (
+            <div className="space-y-1.5">
+              <div className="grid grid-cols-[1fr_auto] gap-2">
+                <input
+                  type="date"
+                  value={when.date}
+                  min={dateRange.min}
+                  max={dateRange.max}
+                  onChange={(e) => e.target.value && setWhen({ ...when, date: e.target.value })}
+                  className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm"
+                  aria-label="날짜"
+                />
+                <select
+                  value={when.hour}
+                  onChange={(e) => setWhen({ ...when, hour: Number(e.target.value) })}
+                  className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm"
+                  aria-label="시각"
+                >
+                  {HOURS.map((h) => (
+                    <option key={h} value={h}>
+                      {formatHour(h)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className={`text-xs ${past ? 'text-red-600' : 'text-neutral-500'}`}>
+                {past ? '이미 지난 시각이에요. 다시 골라주세요.' : `${formatWhen(when)}에 만나요`}
+              </p>
+            </div>
+          )}
         </div>
 
-        <div className="space-y-2 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+        <div className="space-y-2 border-t border-neutral-100 pt-4">
           <div className="flex items-baseline justify-between">
             <h2 className="text-xs font-semibold tracking-wide text-neutral-400">얼마나 걸어서?</h2>
             <span className="text-sm">
@@ -200,19 +243,19 @@ export default function RoomEntryPage() {
             step={1}
             value={walkMin}
             onChange={(e) => setWalkMin(Number(e.target.value))}
-            className="w-full accent-neutral-900 dark:accent-white"
+            className="w-full text-brand"
             aria-label="도보 시간"
           />
         </div>
 
-        <div className="space-y-2 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+        <div className="space-y-2 border-t border-neutral-100 pt-4">
           <h2 className="text-xs font-semibold tracking-wide text-neutral-400">어떻게 부를까요?</h2>
           <input
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
             maxLength={12}
             placeholder="닉네임 (최대 12자)"
-            className="w-full rounded-xl border border-neutral-200 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"
+            className="w-full rounded-xl border border-neutral-200 bg-transparent px-3 py-2.5 text-sm"
           />
         </div>
 
@@ -220,21 +263,23 @@ export default function RoomEntryPage() {
           type="button"
           disabled={!canCreate}
           onClick={() => void create()}
-          className="w-full rounded-2xl bg-neutral-900 px-4 py-3.5 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+          className="w-full rounded-2xl bg-brand px-4 py-3.5 text-sm font-semibold text-white shadow-sm shadow-brand/25 transition-colors hover:bg-brand-strong disabled:opacity-40"
         >
           {busy
             ? '만드는 중…'
             : !geo.coords
               ? '먼저 만날 곳을 정해주세요'
+              : past
+                ? '지난 시각은 고를 수 없어요'
               : nickname.trim().length === 0
                 ? '닉네임을 입력해주세요'
                 : '방 만들기'}
         </button>
 
-        {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+        {error && <p className="text-xs text-red-600">{error}</p>}
       </section>
 
-      <section className="space-y-2 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+      <section className="space-y-2 rounded-2xl border border-neutral-200 bg-white p-4">
         <h2 className="text-xs font-semibold tracking-wide text-neutral-400">
           이미 만들어진 방이 있다면
         </h2>
@@ -242,13 +287,13 @@ export default function RoomEntryPage() {
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 6))}
           placeholder="6자리 코드"
-          className="w-full rounded-xl border border-neutral-200 bg-transparent px-3 py-2.5 text-center text-lg font-semibold tracking-[0.3em] dark:border-neutral-700"
+          className="w-full rounded-xl border border-neutral-200 bg-transparent px-3 py-2.5 text-center text-lg font-semibold tracking-[0.3em]"
         />
         <button
           type="button"
           disabled={code.length !== 6}
           onClick={() => router.push(`/room/${code}`)}
-          className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 text-sm font-medium disabled:opacity-40 dark:border-neutral-700"
+          className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 text-sm font-medium disabled:opacity-40"
         >
           코드로 입장
         </button>

@@ -33,10 +33,11 @@ const CONFLICT_LABEL: Partial<Record<keyof MenuFilters, string>> = {
   soup: '국물',
   solo: '혼밥',
   quick: '빨리 먹기',
+  formal: '격식',
   weight: '양',
 };
 
-const TOGGLE_KEYS = ['meat', 'seafood', 'flour', 'soup', 'solo', 'quick'] as const;
+const TOGGLE_KEYS = ['meat', 'seafood', 'flour', 'soup', 'solo', 'quick', 'formal'] as const;
 
 /**
  * 하나로 좁힌다.
@@ -105,6 +106,7 @@ function toggleMisses(menu: Menu, f: MenuFilters): number {
   check(f.soup, menu.soup);
   check(f.solo, menu.solo);
   check(f.quick, menu.quick);
+  check(f.formal, menu.formal);
   if (f.weight !== 'any' && menu.weight !== f.weight) misses += 1;
 
   return misses;

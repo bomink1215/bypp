@@ -120,7 +120,7 @@ sort=distance로 받은 45건의 가장 먼 거리: 119m
 | 맛 | 순함↔매움, 담백함↔느끼함, 시원함↔뜨끈함 | 슬라이더. **목표값이지 필터가 아니다** |
 | 식재료 | 고기 / 해물 / 밀가루 | 있음·없음·상관없음 (하드) |
 | 양 | 가볍게 / 든든하게 | 하드 |
-| 기타 | 국물 / 혼밥 / 빨리 먹기 | 있음·없음·상관없음 (하드) |
+| 기타 | 국물 / 혼밥 / 빨리 먹기 / 격식 | 있음·없음·상관없음 (하드) |
 
 맛 슬라이더는 **다섯 칸이고 가운데 칸이 상관없음(null)** 이다. 맛 값은 0~3 네 단계인데
 네 칸짜리 바에는 정중앙이 없어 기본 상태가 한쪽으로 치우친다. 양극단 바에서 가운데가
@@ -129,7 +129,13 @@ sort=distance로 받은 45건의 가장 먼 거리: 119m
 
 **식재료를 완화 순서의 맨 뒤에 두는 건 의도다.** 알레르기나 채식일 수 있어 어기면
 아쉬운 정도가 아니라 못 먹는 걸 추천하는 셈이 된다. 완화 순서는
-`quick → solo → weight → soup → flour → seafood → meat`.
+`quick → solo → weight → soup → formal → flour → seafood → meat`.
+격식은 편의 조건보다 뒤다 — 윗사람 대접 자리에 분식이 뜨는 건 아쉬운 정도가 아니다.
+
+**격식(`formal`)은 메뉴에 붙이고 가게는 약속하지 않는다.** 카카오는 가게 분위기를 주지 않으므로
+"대접할 만한 메뉴"(한정식·갈비·스테이크·초밥·회 등)까지만 고르고, 분위기와 룸 여부는
+카카오맵에서 확인하라고 안내한다(원칙 1). 취향 학습에도 넣지 않는다 — 자리의 성격이지
+그 사람의 입맛이 아니기 때문이다.
 
 ## 피드백은 두 버튼이다
 
@@ -182,6 +188,34 @@ sort=distance로 받은 45건의 가장 먼 거리: 119m
 
 서로 반대되는 토글(A는 고기 있어야, B는 없어야)은 **해제하고 이름을 표시한다.**
 조용히 넘어가면 사용자는 자기 조건이 지켜진 줄 안다.
+
+## 디자인
+
+색은 로고에서 뽑았고 `src/app/globals.css`의 `@theme`에 있다.
+
+| 토큰 | 값 | 쓰는 곳 |
+|---|---|---|
+| `cream` | `#FFF6EC` | 페이지 바탕 (로고 배경과 같은 색) |
+| `brand` | `#E8553B` | **화면의 주 행동 버튼**, 강조 라벨, 내가 고른 것(투표·가게) |
+| `neutral-*` | 따뜻한 갈색 계열 | 나머지 전부. `neutral-900`(`#2A1E17`)이 로고 글자색 |
+
+- **Tailwind의 `neutral` 팔레트를 통째로 갈색으로 덮어썼다.** 컴포넌트는 그냥 `neutral-*`을 쓰면
+  된다. 차가운 회색(`gray`/`zinc`/`slate`)을 새로 쓰지 않는다 — 크림 바탕에서 떠 보인다.
+- **코랄은 아껴 쓴다.** 주 행동 하나 + 강조 몇 곳. 칩의 "선택됨"은 코랄이 아니라 잉크(`neutral-900`)다.
+  전부 코랄이면 어디를 눌러야 할지 안 보인다.
+- 카카오 노란 버튼(`#FEE500`)은 카카오 가이드라서 브랜드색으로 바꾸지 않는다.
+- **다크 모드는 없다.** 로고가 크림 바탕 위에서 완결된 디자인이라 어두운 바탕에서 워드마크 글자가
+  묻힌다. `dark:` 클래스를 쓰지 않는다.
+- 슬라이더는 브라우저 기본 모양 대신 `globals.css`에서 직접 그린다. 손잡이 색은 `text-*`로 준다.
+
+로고 파일:
+
+| 파일 | 용도 |
+|---|---|
+| `public/logo.png` | 워드마크(태그라인 포함, 투명 배경). 첫 화면 |
+| `public/logo-mark.png` | 핀 마크만. 헤더(`Brand`), 지도 중앙 핀 |
+| `src/app/icon.png` / `apple-icon.png` | 파비콘 / iOS 홈 화면. Next가 파일명으로 자동 등록 |
+| `src/app/opengraph-image.png` | 링크 미리보기. 방 링크를 카톡으로 공유할 때 뜬다 |
 
 ## 기술 스택
 
@@ -400,7 +434,7 @@ src/lib/supabase/           client.ts — PostgREST 얇은 래퍼. server-only
 supabase/migrations/        DB 스키마 (대시보드에서 수동 실행)
 src/lib/recommend.ts        후보 도출, 필터 완화, 가중 랜덤
 src/hooks/                  useGeolocation, useRecommendation, useRoom, useProfile, useAuth
-src/components/             OptionPanel, MenuCard, PlaceList, PlaceMap, LocationPicker, AuthBar
+src/components/             OptionPanel, MenuCard, PlaceList, PlaceMap, LocationPicker, AuthBar, Brand
 scripts/verify-seed.ts      원칙 1 검사
 ```
 

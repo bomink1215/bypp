@@ -33,23 +33,23 @@ export function PlaceList({ places, at, selectedId, onSelect }: Props) {
             onClick={() => onSelect(p.id)}
             className={`rounded-2xl border p-4 transition-colors ${
               selected
-                ? 'border-neutral-900 bg-neutral-50 dark:border-white dark:bg-neutral-800'
-                : 'border-neutral-200 bg-white hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60'
+                ? 'border-brand bg-brand-soft/40'
+                : 'border-neutral-200 bg-white hover:bg-neutral-50'
             }`}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h3 className="truncate font-medium">{p.place_name}</h3>
-                <p className="mt-0.5 truncate text-xs text-neutral-500 dark:text-neutral-400">
+                <p className="mt-0.5 truncate text-xs text-neutral-500">
                   {p.category_name.replace(/^음식점 > /, '')}
                 </p>
               </div>
-              <span className="shrink-0 text-sm font-medium tabular-nums text-neutral-600 dark:text-neutral-300">
+              <span className="shrink-0 text-sm font-medium tabular-nums text-neutral-600">
                 {formatDistance(Number(p.distance))}
               </span>
             </div>
 
-            <p className="mt-2 truncate text-xs text-neutral-500 dark:text-neutral-400">
+            <p className="mt-2 truncate text-xs text-neutral-500">
               {p.road_address_name || p.address_name}
             </p>
 
@@ -75,7 +75,7 @@ export function PlaceList({ places, at, selectedId, onSelect }: Props) {
               <a
                 href={`tel:${p.phone}`}
                 onClick={(e) => e.stopPropagation()}
-                className="mt-1.5 block rounded-xl px-4 py-2 text-center text-xs text-neutral-500 underline underline-offset-2 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200"
+                className="mt-1.5 block rounded-xl px-4 py-2 text-center text-xs text-neutral-500 underline underline-offset-2 hover:text-neutral-800"
               >
                 전화로 물어보기 {p.phone}
               </a>

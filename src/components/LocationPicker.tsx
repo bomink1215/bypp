@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Script from 'next/script';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -79,7 +80,7 @@ export function LocationPicker({ initial, onPick, onCancel }: Props) {
 
   if (!JS_KEY) {
     return (
-      <div className="rounded-2xl border border-dashed border-neutral-300 p-6 text-center text-xs text-neutral-500 dark:border-neutral-700">
+      <div className="rounded-2xl border border-dashed border-neutral-300 p-6 text-center text-xs text-neutral-500">
         지도를 쓰려면 <code>NEXT_PUBLIC_KAKAO_JS_KEY</code>가 필요합니다.
       </div>
     );
@@ -93,16 +94,18 @@ export function LocationPicker({ initial, onPick, onCancel }: Props) {
         onReady={() => window.kakao?.maps.load(() => setReady(true))}
       />
 
-      <div className="relative h-56 overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-800">
+      <div className="relative h-56 overflow-hidden rounded-2xl border border-neutral-200">
         <div ref={containerRef} className="h-full w-full" />
 
-        {/* 화면 중앙 고정 핀. 지도가 움직여도 여기가 항상 선택 지점이다. */}
-        <div
+        {/* 화면 중앙 고정 핀. 지도가 움직여도 여기가 항상 선택 지점이다. 핀 끝이 중앙에 오도록 위로 올린다. */}
+        <Image
+          src="/logo-mark.png"
+          alt=""
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full text-2xl drop-shadow"
-        >
-          📍
-        </div>
+          width={27}
+          height={36}
+          className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full drop-shadow-md"
+        />
       </div>
 
       <div className="flex items-center justify-between gap-2 text-sm">
@@ -119,14 +122,14 @@ export function LocationPicker({ initial, onPick, onCancel }: Props) {
         <button
           type="button"
           onClick={() => onPick(centerRef.current, label ?? '지도에서 고른 위치')}
-          className="rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white dark:bg-white dark:text-neutral-900"
+          className="rounded-xl bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-brand/25 transition-colors hover:bg-brand-strong"
         >
           여기로 정하기
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-xl border border-neutral-200 px-4 py-2.5 text-sm dark:border-neutral-700"
+          className="rounded-xl border border-neutral-200 px-4 py-2.5 text-sm"
         >
           취소
         </button>

@@ -23,6 +23,7 @@ function sanitize(raw: unknown): MenuFilters {
     soup: toggle(f.soup),
     solo: toggle(f.solo),
     quick: toggle(f.quick),
+    formal: toggle(f.formal),
     weight: f.weight === 'light' || f.weight === 'heavy' ? f.weight : 'any',
   };
 }

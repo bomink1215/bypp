@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 
 import { AuthBar } from '@/components/AuthBar';
+import { Brand } from '@/components/Brand';
 import { MenuCard } from '@/components/MenuCard';
 import { OptionPanel } from '@/components/OptionPanel';
 import { PlaceList } from '@/components/PlaceList';
@@ -39,22 +40,42 @@ export default function Home() {
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <Link
-          href="/room"
-          className="rounded-full border border-neutral-300 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
-        >
-          친구와 함께 정하기
-        </Link>
+      <div className="mb-6 flex items-center justify-between gap-2">
+        <Brand />
         <AuthBar />
       </div>
 
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">뭐 먹지</h1>
-        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+      <header className="mb-4">
+        <h1 className="text-2xl font-black tracking-tight">혼자 고르기</h1>
+        <p className="mt-1 text-sm text-neutral-500">
           지금 있는 곳 근처에서, 지금 먹을 만한 걸 골라드려요.
         </p>
       </header>
+
+      {/*
+        같이 고르기가 이 서비스의 무게중심이라(CLAUDE.md) 작은 링크로 두면 안 된다.
+        코랄 채움은 이 화면의 주 행동(추천받기) 몫이라, 여기는 옅은 코랄 바탕으로 구분한다.
+      */}
+      <Link
+        href="/room"
+        className="group mb-6 flex items-center gap-3 rounded-2xl border border-brand/25 bg-brand-soft px-4 py-3.5 transition-colors hover:border-brand/60"
+      >
+        <span aria-hidden className="text-2xl leading-none">
+          🧑‍🤝‍🧑
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold">친구와 함께 정하기</span>
+          <span className="block text-xs text-neutral-600">
+            링크를 공유하면 각자 조건을 내고, 투표로 정해요
+          </span>
+        </span>
+        <span
+          aria-hidden
+          className="text-lg font-bold text-brand transition-transform group-hover:translate-x-0.5"
+        >
+          →
+        </span>
+      </Link>
 
       <div className="grid gap-5 lg:grid-cols-[360px_1fr] lg:items-start">
         <div className="space-y-4">
@@ -78,7 +99,7 @@ export default function Home() {
             type="button"
             onClick={handleRecommend}
             disabled={!geo.coords || busy}
-            className="w-full rounded-2xl bg-neutral-900 px-4 py-3.5 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+            className="w-full rounded-2xl bg-brand px-4 py-3.5 text-sm font-semibold text-white shadow-sm shadow-brand/25 transition-colors hover:bg-brand-strong disabled:opacity-40"
           >
             {busy ? '찾는 중…' : geo.coords ? '메뉴 추천받기' : '먼저 위치를 정해주세요'}
           </button>
@@ -89,7 +110,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={rec.reset}
-                className="underline underline-offset-2 hover:text-neutral-600 dark:hover:text-neutral-300"
+                className="underline underline-offset-2 hover:text-neutral-600"
               >
                 기록 초기화
               </button>
@@ -99,19 +120,19 @@ export default function Home() {
 
         <section className="space-y-4">
           {rec.status === 'idle' && (
-            <div className="rounded-2xl border border-dashed border-neutral-300 p-10 text-center text-sm text-neutral-500 dark:border-neutral-700">
+            <div className="rounded-2xl border border-dashed border-neutral-300 p-10 text-center text-sm text-neutral-500">
               위치와 조건을 정하고 추천을 받아보세요.
             </div>
           )}
 
           {rec.status === 'error' && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               {rec.error}
             </div>
           )}
 
           {rec.status === 'empty' && (
-            <div className="rounded-2xl border border-neutral-200 p-6 text-center text-sm text-neutral-500 dark:border-neutral-800">
+            <div className="rounded-2xl border border-neutral-200 p-6 text-center text-sm text-neutral-500">
               조건에 맞는 메뉴를 찾지 못했어요. 도보 시간을 늘리거나 조건을 줄여보세요.
               {profile.restrictions.length > 0 && (
                 <span className="mt-1 block text-xs text-neutral-400">

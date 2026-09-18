@@ -4,6 +4,7 @@ import { toErrorResponse } from '@/lib/api-error';
 import { BadRequestError } from '@/lib/params';
 import { requireNickname, requireToken } from '@/lib/room/request';
 import { createRoom } from '@/lib/room/service';
+import { MAX_DAYS_AHEAD } from '@/lib/when';
 
 export type CreateRoomResponse = { code: string };
 
@@ -24,6 +25,12 @@ export async function POST(request: NextRequest) {
 
     const eatAt = new Date(String(body.eatAt ?? ''));
     if (Number.isNaN(eatAt.getTime())) throw new BadRequestError('시각이 올바르지 않아요.');
+    // 화면(lib/when.ts)과 같은 범위. 한 시간 여유는 isPast와 맞춘 것이다.
+    const now = Date.now();
+    if (eatAt.getTime() < now - 3_600_000) throw new BadRequestError('이미 지난 시각이에요.');
+    if (eatAt.getTime() > now + (MAX_DAYS_AHEAD + 1) * 86_400_000) {
+      throw new BadRequestError(`${MAX_DAYS_AHEAD}일 뒤까지만 정할 수 있어요.`);
+    }
 
     const placeLabel = String(body.placeLabel ?? '').trim().slice(0, 60) || '만나는 곳';
 

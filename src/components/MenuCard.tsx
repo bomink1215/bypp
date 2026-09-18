@@ -22,6 +22,7 @@ const RELAX_LABEL: Record<Relaxation, string> = {
   soup: '국물',
   solo: '혼밥',
   quick: '빨리 먹기',
+  formal: '격식',
 };
 
 function traits(menu: Menu): string[] {
@@ -40,6 +41,7 @@ function traits(menu: Menu): string[] {
   if (menu.soup) out.push('국물');
   if (menu.solo) out.push('혼밥 가능');
   if (menu.quick) out.push('빨리 먹기');
+  if (menu.formal) out.push('격식 있는 자리');
 
   out.push(menu.weight === 'heavy' ? '든든' : menu.weight === 'light' ? '가벼움' : '보통');
   return out;
@@ -47,16 +49,16 @@ function traits(menu: Menu): string[] {
 
 export function MenuCard({ menu, relaxed, restrictions, decided, busy, onLike, onAnother }: Props) {
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-      <p className="text-xs text-neutral-500 dark:text-neutral-400">오늘의 추천</p>
-      <h2 className="mt-1 text-3xl font-bold tracking-tight">{menu.name}</h2>
+    <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+      <p className="text-xs font-semibold text-brand">오늘의 추천</p>
+      <h2 className="mt-1 text-3xl font-black tracking-tight">{menu.name}</h2>
 
       {/*
         제약이 걸려 있다는 사실을 결과에 항상 띄운다. localStorage가 초기화되면 제약이
         조용히 사라지는데, 이 줄이 없어진 걸 눈치채야 다시 설정할 수 있다.
       */}
       {restrictions.length > 0 && (
-        <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+        <p className="mt-2 text-xs text-neutral-500">
           {restrictions.map((r) => RESTRICTION_LABEL[r]).join(' · ')} 제외 중
         </p>
       )}
@@ -65,7 +67,7 @@ export function MenuCard({ menu, relaxed, restrictions, decided, busy, onLike, o
         {traits(menu).map((t) => (
           <span
             key={t}
-            className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+            className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs text-neutral-600"
           >
             {t}
           </span>
@@ -74,13 +76,13 @@ export function MenuCard({ menu, relaxed, restrictions, decided, busy, onLike, o
 
       {/* 조건을 풀었으면 반드시 말한다. 조용히 넓히면 사용자는 조건이 지켜진 줄 안다. */}
       {relaxed.length > 0 && (
-        <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+        <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">
           조건에 맞는 게 없어 {relaxed.map((r) => RELAX_LABEL[r]).join(', ')} 조건을 완화했어요.
         </p>
       )}
 
       {decided ? (
-        <p className="mt-5 rounded-xl bg-neutral-100 px-3 py-2.5 text-center text-sm font-medium dark:bg-neutral-800">
+        <p className="mt-5 rounded-xl bg-neutral-100 px-3 py-2.5 text-center text-sm font-medium">
           맛있게 드세요! 아래에서 가게를 골라보세요.
         </p>
       ) : (
@@ -89,7 +91,7 @@ export function MenuCard({ menu, relaxed, restrictions, decided, busy, onLike, o
             type="button"
             onClick={onLike}
             disabled={busy}
-            className="rounded-xl bg-neutral-900 px-3 py-3.5 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+            className="rounded-xl bg-brand px-3 py-3.5 text-sm font-semibold text-white shadow-sm shadow-brand/25 transition-colors hover:bg-brand-strong disabled:opacity-40"
           >
             좋아요
           </button>
@@ -97,7 +99,7 @@ export function MenuCard({ menu, relaxed, restrictions, decided, busy, onLike, o
             type="button"
             onClick={onAnother}
             disabled={busy}
-            className="rounded-xl border border-neutral-200 px-3 py-3.5 text-sm font-medium disabled:opacity-40 dark:border-neutral-700"
+            className="rounded-xl border border-neutral-200 px-3 py-3.5 text-sm font-medium disabled:opacity-40"
           >
             다른 거 추천
           </button>

@@ -10,6 +10,7 @@ import { db } from '../supabase/client';
 import { groupScorer, mergeConditions, type ParticipantInput } from './merge';
 import {
   generateRoomCode,
+  ROOM_AFTER_MEAL_HOURS,
   ROOM_TTL_HOURS,
   type ParticipantRow,
   type RoomRow,
@@ -36,7 +37,12 @@ export async function createRoom(input: {
   walkMin: number;
   eatAt: Date;
 }): Promise<string> {
-  const expires = new Date(Date.now() + ROOM_TTL_HOURS * 3600_000);
+  const expires = new Date(
+    Math.max(
+      Date.now() + ROOM_TTL_HOURS * 3600_000,
+      input.eatAt.getTime() + ROOM_AFTER_MEAL_HOURS * 3600_000,
+    ),
+  );
 
   // 코드가 겹칠 확률은 낮지만 0은 아니다. 몇 번 다시 뽑아본다.
   for (let attempt = 0; attempt < 5; attempt++) {

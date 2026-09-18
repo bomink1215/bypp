@@ -1,26 +1,88 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * 색은 로고에서 뽑았다(public/logo.png).
+ *   크림 #FFF6EC — 로고 배경. 페이지 바탕
+ *   코랄 #E8553B — 핀과 물음표. 화면의 주 행동 하나에만 쓴다
+ *   잉크 #2A1E17 — 워드마크 글자. 본문과 "선택됨" 상태
+ *
+ * neutral 팔레트를 통째로 따뜻한 갈색 계열로 갈아끼운다. 컴포넌트는 계속 neutral-*을 쓰면
+ * 되고, 차가운 회색이 크림 바탕 위에서 떠 보이는 일이 없다.
+ */
+@theme {
+  --color-neutral-50: #faf3ea;
+  --color-neutral-100: #f3eadf;
+  --color-neutral-200: #e8dccd;
+  --color-neutral-300: #d5c5b3;
+  --color-neutral-400: #9c8a7b;
+  --color-neutral-500: #76655a;
+  --color-neutral-600: #5c4d43;
+  --color-neutral-700: #45382f;
+  --color-neutral-800: #33271f;
+  --color-neutral-900: #2a1e17;
+  --color-neutral-950: #1a120d;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-cream: #fff6ec;
+  --color-brand: #e8553b;
+  --color-brand-strong: #d0432a;
+  --color-brand-soft: #fde8e1;
+  --color-steam: #f3a694;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-noto-sans-kr), ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-cream);
+  color: var(--color-neutral-900);
+}
+
+/* 주 행동 버튼에서 누르는 감각. 모바일에서 hover가 없으니 active로 준다. */
+button:not(:disabled):active,
+a:active {
+  transform: translateY(1px);
+}
+
+/*
+ * 슬라이더. 브라우저 기본 모양은 accent 색이 옅으면 트랙을 알아서 어둡게 칠해서
+ * "상관없음"(옅은 색) 상태가 오히려 가장 진해 보였다. 트랙은 항상 같은 색으로 두고
+ * 손잡이 색만 `color`(text-*)로 바꾼다.
+ */
+input[type="range"] {
+  appearance: none;
+  height: 1.5rem;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-neutral-200);
+}
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-neutral-200);
+}
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
+  border-radius: 9999px;
+  background: currentColor;
+  border: 3px solid white;
+  box-shadow: 0 1px 4px rgb(42 30 23 / 0.25);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: currentColor;
+  border: 3px solid white;
+  box-shadow: 0 1px 4px rgb(42 30 23 / 0.25);
+}
+input[type="range"]:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 4px;
+  border-radius: 9999px;
 }

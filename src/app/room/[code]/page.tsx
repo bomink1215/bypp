@@ -6,6 +6,7 @@ import { OptionPanel } from '@/components/OptionPanel';
 import { PlaceList } from '@/components/PlaceList';
 import { PlaceMap } from '@/components/PlaceMap';
 import { AuthBar } from '@/components/AuthBar';
+import { Brand } from '@/components/Brand';
 import { useAuth } from '@/hooks/useAuth';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useProfile } from '@/hooks/useProfile';
@@ -62,21 +63,22 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 space-y-5 px-4 py-6">
-      <div>
+      <div className="flex items-center justify-between gap-2">
+        <Brand />
         <AuthBar />
       </div>
 
       <header>
-        <p className="text-xs text-neutral-500 dark:text-neutral-400">같이 고르기 · {state.code}</p>
-        <h1 className="mt-1 text-xl font-bold">{state.placeLabel}</h1>
-        <p className="mt-0.5 text-sm text-neutral-500 dark:text-neutral-400">
+        <p className="text-xs text-neutral-500">같이 고르기 · {state.code}</p>
+        <h1 className="mt-1 text-2xl font-black tracking-tight">{state.placeLabel}</h1>
+        <p className="mt-0.5 text-sm text-neutral-500">
           도보 {state.walkMin}분 이내 ·{' '}
           {eatAt.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: 'numeric' })}
         </p>
       </header>
 
       {/* 참가자 현황 — 누가 들어왔고 누가 냈는지 */}
-      <section className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+      <section className="rounded-2xl border border-neutral-200 bg-white p-4">
         <h2 className="text-xs font-semibold tracking-wide text-neutral-400">
           참가자 {state.members.length}명
         </h2>
@@ -88,8 +90,8 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
                 key={m.nickname}
                 className={`rounded-full px-3 py-1 text-sm ${
                   done
-                    ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
-                    : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'
+                    ? 'bg-neutral-900 text-white'
+                    : 'bg-neutral-100 text-neutral-500'
                 }`}
               >
                 {m.nickname}
@@ -104,14 +106,14 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
       </section>
 
       {room.error && (
-        <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
+        <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {room.error}
         </p>
       )}
 
       {/* 1) 입장 — 닉네임을 정해야 참가자로 잡힌다 */}
       {!joined && !state.hasSubmitted && (
-        <section className="space-y-2 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <section className="space-y-2 rounded-2xl border border-neutral-200 bg-white p-4">
           <label htmlFor="nickname" className="text-sm font-medium">
             어떻게 부를까요?
           </label>
@@ -121,7 +123,7 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
             onChange={(e) => setNicknameInput(e.target.value)}
             maxLength={12}
             placeholder="닉네임 (최대 12자)"
-            className="w-full rounded-xl border border-neutral-200 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"
+            className="w-full rounded-xl border border-neutral-200 bg-transparent px-3 py-2.5 text-sm"
           />
           <button
             type="button"
@@ -131,7 +133,7 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
               await room.join(nickname.trim());
               setJoined(true);
             }}
-            className="w-full rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+            className="w-full rounded-xl bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-brand/25 transition-colors hover:bg-brand-strong disabled:opacity-40"
           >
             입장하기
           </button>
@@ -142,7 +144,7 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
       {state.status === 'collecting' && (joined || state.hasSubmitted) && (
         <section className="space-y-3">
           {state.hasSubmitted ? (
-            <p className="rounded-2xl border border-neutral-200 bg-white p-4 text-center text-sm dark:border-neutral-800 dark:bg-neutral-900">
+            <p className="rounded-2xl border border-neutral-200 bg-white p-4 text-center text-sm">
               조건을 냈어요. 다른 사람을 기다리는 중…
             </p>
           ) : (
@@ -167,7 +169,7 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
                 type="button"
                 disabled={room.busy}
                 onClick={() => void room.submit(filters, profile.restrictions)}
-                className="w-full rounded-2xl bg-neutral-900 px-4 py-3.5 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+                className="w-full rounded-2xl bg-brand px-4 py-3.5 text-sm font-semibold text-white shadow-sm shadow-brand/25 transition-colors hover:bg-brand-strong disabled:opacity-40"
               >
                 이 조건으로 낼게요
               </button>
@@ -179,7 +181,7 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
               type="button"
               disabled={room.busy}
               onClick={() => void room.start()}
-              className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm font-medium disabled:opacity-40 dark:border-neutral-700"
+              className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm font-medium disabled:opacity-40"
             >
               {everyoneSubmitted ? '모두 냈어요 — 후보 뽑기' : '지금까지 낸 조건으로 후보 뽑기'}
             </button>
@@ -204,12 +206,14 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
                     onClick={() => void room.vote(c.menu.id)}
                     className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3.5 text-left transition-colors disabled:opacity-40 ${
                       mine
-                        ? 'border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-900'
-                        : 'border-neutral-200 bg-white hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800'
+                        ? 'border-brand bg-brand-soft'
+                        : 'border-neutral-200 bg-white hover:bg-neutral-50'
                     }`}
                   >
                     <span className="font-medium">{c.menu.name}</span>
-                    <span className="text-sm tabular-nums">{count}표</span>
+                    <span className={`text-sm tabular-nums ${mine ? 'font-semibold text-brand' : 'text-neutral-500'}`}>
+                      {count}표
+                    </span>
                   </button>
                 </li>
               );
@@ -221,7 +225,7 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
               type="button"
               disabled={room.busy}
               onClick={() => void room.decide()}
-              className="w-full rounded-2xl bg-neutral-900 px-4 py-3.5 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+              className="w-full rounded-2xl bg-brand px-4 py-3.5 text-sm font-semibold text-white shadow-sm shadow-brand/25 transition-colors hover:bg-brand-strong disabled:opacity-40"
             >
               투표 마감하고 정하기
             </button>
@@ -232,14 +236,14 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
       {/* 4) 확정 */}
       {state.status === 'decided' && decidedMenu && (
         <section className="space-y-4">
-          <div className="rounded-2xl border border-neutral-200 bg-white p-5 text-center dark:border-neutral-800 dark:bg-neutral-900">
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">오늘의 결정</p>
-            <h2 className="mt-1 text-3xl font-bold tracking-tight">{decidedMenu.name}</h2>
+          <div className="rounded-2xl border border-neutral-200 bg-white p-5 text-center">
+            <p className="text-xs font-semibold text-brand">오늘의 결정</p>
+            <h2 className="mt-1 text-3xl font-black tracking-tight">{decidedMenu.name}</h2>
             {places.length === 0 && (
               <button
                 type="button"
                 onClick={() => void loadPlaces()}
-                className="mt-4 w-full rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white dark:bg-white dark:text-neutral-900"
+                className="mt-4 w-full rounded-xl bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-brand/25 transition-colors hover:bg-brand-strong"
               >
                 근처 가게 보기
               </button>
@@ -275,7 +279,7 @@ function ConditionNotes({ state }: { state: NonNullable<ReturnType<typeof useRoo
   if (state.restrictions.length === 0 && state.conflicts.length === 0) return null;
 
   return (
-    <div className="space-y-1 rounded-xl bg-neutral-50 px-3 py-2.5 text-xs text-neutral-600 dark:bg-neutral-800/50 dark:text-neutral-300">
+    <div className="space-y-1 rounded-xl bg-neutral-50 px-3 py-2.5 text-xs text-neutral-600">
       {state.restrictions.length > 0 && (
         <p>{state.restrictions.map((r) => RESTRICTION_LABEL[r]).join(' · ')} 은(는) 빼고 뽑았어요.</p>
       )}
