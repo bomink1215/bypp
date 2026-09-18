@@ -23,6 +23,25 @@ export const CALLBACK_PATH = '/api/auth/kakao/callback';
 
 export class KakaoAuthError extends Error {}
 
+/**
+ * 로그인 후 돌아갈 경로. 같은 사이트 안이 아니면 홈으로.
+ *
+ * 콜백은 id_token을 이 주소의 프래그먼트에 붙여 보내므로, 외부로 새면 토큰이 통째로 넘어간다.
+ * 문자열 모양(`/`로 시작, `//` 아님)만 보면 안 된다 — URL 파서는 `/\evil.com`의 `\`를 `/`로,
+ * `/\t/evil.com`의 탭을 무시하고 읽어서 둘 다 `//evil.com`이 된다. 그래서 실제로 풀어본 뒤
+ * origin을 비교하고, 경로·쿼리만 남긴다.
+ */
+export function safeNextPath(next: string | null | undefined, origin: string): string {
+  if (!next) return '/';
+  try {
+    const url = new URL(next, origin);
+    if (url.origin !== origin) return '/';
+    return url.pathname + url.search;
+  } catch {
+    return '/';
+  }
+}
+
 function restKey(): string {
   const key = process.env.KAKAO_REST_API_KEY;
   if (!key) throw new KakaoAuthError('KAKAO_REST_API_KEY가 없습니다.');

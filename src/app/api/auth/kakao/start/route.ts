@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-import { buildAuthorizeUrl } from '@/lib/kakao/oidc';
+import { buildAuthorizeUrl, safeNextPath } from '@/lib/kakao/oidc';
 
 const STATE_COOKIE = 'kakao_oauth_state';
 const NEXT_COOKIE = 'kakao_oauth_next';
@@ -15,11 +15,22 @@ export async function GET(request: NextRequest) {
   const origin = request.nextUrl.origin;
   const state = crypto.randomUUID();
 
-  const next = request.nextUrl.searchParams.get('next') ?? '/';
   // 같은 사이트 안으로만 돌아간다. 외부 주소가 오면 홈으로.
-  const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/';
+  const safeNext = safeNextPath(request.nextUrl.searchParams.get('next'), origin);
 
-  const res = NextResponse.redirect(buildAuthorizeUrl(origin, state));
+  let authorizeUrl: string;
+  try {
+    authorizeUrl = buildAuthorizeUrl(origin, state);
+  } catch (e) {
+    // 설정이 빠졌을 때 흰 500 페이지 대신 원래 화면으로 돌려보낸다. 로그인은 선택이라
+    // 실패해도 앱을 막으면 안 된다. 사유는 useAuth가 login_error로 받아 보여준다.
+    console.error(e);
+    const back = new URL(safeNext, origin);
+    back.searchParams.set('login_error', '지금은 로그인할 수 없어요. 잠시 후 다시 시도해주세요.');
+    return NextResponse.redirect(back);
+  }
+
+  const res = NextResponse.redirect(authorizeUrl);
   const options = {
     httpOnly: true,
     sameSite: 'lax' as const,

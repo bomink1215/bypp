@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-import { exchangeCodeForIdToken } from '@/lib/kakao/oidc';
+import { exchangeCodeForIdToken, safeNextPath } from '@/lib/kakao/oidc';
 
 const STATE_COOKIE = 'kakao_oauth_state';
 const NEXT_COOKIE = 'kakao_oauth_next';
@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
   const origin = request.nextUrl.origin;
   const params = request.nextUrl.searchParams;
 
-  const next = request.cookies.get(NEXT_COOKIE)?.value ?? '/';
+  // start에서 이미 걸렀지만 쿠키는 브라우저 쪽 값이라 여기서 한 번 더 거른다.
+  const next = safeNextPath(request.cookies.get(NEXT_COOKIE)?.value, origin);
   const fail = (reason: string) => {
     const url = new URL(next, origin);
     url.searchParams.set('login_error', reason);
