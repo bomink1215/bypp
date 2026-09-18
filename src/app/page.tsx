@@ -1,154 +1,77 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import Link from 'next/link';
 
-import { MenuCard } from '@/components/MenuCard';
-import { OptionPanel } from '@/components/OptionPanel';
-import { PlaceList } from '@/components/PlaceList';
-import { PlaceMap } from '@/components/PlaceMap';
-import { RoomLauncher } from '@/components/RoomLauncher';
-import { useGeolocation } from '@/hooks/useGeolocation';
-import { useProfile } from '@/hooks/useProfile';
-import { useRecommendation } from '@/hooks/useRecommendation';
-import { RESTRICTION_LABEL } from '@/lib/menu/restrictions';
-import { DEFAULT_FILTERS, type MenuFilters } from '@/lib/menu/types';
-import { resolveWhen, type When } from '@/lib/when';
+import { useAuth } from '@/hooks/useAuth';
 
-export default function Home() {
-  const geo = useGeolocation();
-  const rec = useRecommendation();
-  const profile = useProfile();
+/** 시작하기를 누르면 가는 곳. 로그인 후에도 여기로 돌아온다. */
+const START = '/recommend';
 
-  const [when, setWhen] = useState<When>({ kind: 'now' });
-  const [walkMin, setWalkMin] = useState(10);
-  const [filters, setFilters] = useState<MenuFilters>(DEFAULT_FILTERS);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  // when이 그대로면 같은 Date를 유지해 하위 컴포넌트가 헛돌지 않게 한다.
-  const at = useMemo(() => resolveWhen(when), [when]);
-
-  const busy = rec.status === 'loading';
-
-  const handleRecommend = () => {
-    if (!geo.coords) return;
-    setSelectedId(null);
-    void rec.start({ coords: geo.coords, walkMin, at, filters, restrictions: profile.restrictions });
-  };
+/**
+ * 첫 화면.
+ *
+ * 추천 화면을 `/recommend`로 옮기고 여기를 안내 화면으로 뒀다. 처음 온 사람이 바로 옵션
+ * 패널을 마주하면 무엇을 하는 서비스인지 모른 채 고르기부터 시작하게 된다.
+ *
+ * 로그인 버튼을 두되 **시작하기를 위에 둔다.** 로그인은 끝까지 선택이고, 안 해도 모든
+ * 기능을 쓸 수 있다는 걸 순서로도 보여준다.
+ */
+export default function LandingPage() {
+  const auth = useAuth();
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">뭐 먹지</h1>
-        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-          지금 있는 곳 근처에서, 지금 먹을 만한 걸 골라드려요.
-        </p>
-      </header>
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-12">
+      <div className="space-y-8">
+        <div className="space-y-6">
+          <p className="text-xl font-medium leading-relaxed tracking-tight sm:text-2xl">
+            소중한 점심시간,
+            <br />
+            오랜만에 만나는 친구들과 식사…
+            <br />
+            뭘 먹어야 좋을까?
+          </p>
 
-      <div className="grid gap-5 lg:grid-cols-[360px_1fr] lg:items-start">
-        <div className="space-y-4">
-          <OptionPanel
-            when={when}
-            onWhenChange={setWhen}
-            walkMin={walkMin}
-            onWalkMinChange={setWalkMin}
-            filters={filters}
-            onFiltersChange={setFilters}
-            geoStatus={geo.status}
-            locationLabel={geo.label}
-            onRequestLocation={geo.request}
-            onPickRegion={geo.setManual}
-            restrictions={profile.restrictions}
-            onToggleRestriction={profile.toggle}
-            currentCoords={geo.coords}
-          />
+          <p className="text-base text-neutral-500 sm:text-lg dark:text-neutral-400">
+            사소한 메뉴 고민 해결해드릴게요!
+          </p>
+        </div>
 
-          <button
-            type="button"
-            onClick={handleRecommend}
-            disabled={!geo.coords || busy}
-            className="w-full rounded-2xl bg-neutral-900 px-4 py-3.5 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+        <div className="space-y-2.5">
+          <Link
+            href={START}
+            className="block w-full rounded-2xl bg-neutral-900 px-4 py-4 text-center text-sm font-semibold text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
           >
-            {busy ? '찾는 중…' : geo.coords ? '메뉴 추천받기' : '먼저 위치를 정해주세요'}
-          </button>
+            시작하기
+          </Link>
 
-          <RoomLauncher
-            coords={geo.coords}
-            placeLabel={geo.label || '현재 위치'}
-            walkMin={walkMin}
-            eatAt={at}
-          />
+          {/* 이미 로그인했다면 다시 권할 이유가 없다. */}
+          {auth.available && !auth.session && (
+            <button
+              type="button"
+              disabled={auth.loading}
+              onClick={() => auth.signIn(START)}
+              className="w-full rounded-2xl border border-neutral-300 px-4 py-4 text-sm font-medium transition-colors hover:bg-neutral-50 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            >
+              로그인하고 더 편리하게 이용하기
+            </button>
+          )}
 
-          {rec.trained && (
-            <div className="flex items-center justify-between px-1 text-[11px] text-neutral-400">
-              <span>{rec.feedbackCount}개 메뉴의 취향을 학습했어요</span>
-              <button
-                type="button"
-                onClick={rec.reset}
-                className="underline underline-offset-2 hover:text-neutral-600 dark:hover:text-neutral-300"
-              >
-                기록 초기화
-              </button>
-            </div>
+          {auth.session && (
+            <p className="text-center text-xs text-neutral-400">
+              {auth.nickname}님으로 로그인되어 있어요
+            </p>
+          )}
+
+          {auth.error && (
+            <p className="text-center text-xs text-red-600 dark:text-red-400">{auth.error}</p>
           )}
         </div>
 
-        <section className="space-y-4">
-          {rec.status === 'idle' && (
-            <div className="rounded-2xl border border-dashed border-neutral-300 p-10 text-center text-sm text-neutral-500 dark:border-neutral-700">
-              위치와 조건을 정하고 추천을 받아보세요.
-            </div>
-          )}
-
-          {rec.status === 'error' && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
-              {rec.error}
-            </div>
-          )}
-
-          {rec.status === 'empty' && (
-            <div className="rounded-2xl border border-neutral-200 p-6 text-center text-sm text-neutral-500 dark:border-neutral-800">
-              조건에 맞는 메뉴를 찾지 못했어요. 도보 시간을 늘리거나 조건을 줄여보세요.
-              {profile.restrictions.length > 0 && (
-                <span className="mt-1 block text-xs text-neutral-400">
-                  {profile.restrictions.map((r) => RESTRICTION_LABEL[r]).join(' · ')} 은(는)
-                  제외한 채로 찾았어요. 이건 자동으로 풀지 않습니다.
-                </span>
-              )}
-            </div>
-          )}
-
-          {rec.menu && (
-            <MenuCard
-              menu={rec.menu}
-              relaxed={rec.relaxed}
-              restrictions={profile.restrictions}
-              decided={rec.decided}
-              busy={busy}
-              onLike={rec.like}
-              onAnother={rec.another}
-            />
-          )}
-
-          {geo.coords && rec.places.length > 0 && (
-            <>
-              <div className="h-[280px]">
-                <PlaceMap
-                  center={geo.coords}
-                  places={rec.places}
-                  selectedId={selectedId}
-                  onSelect={setSelectedId}
-                />
-              </div>
-
-              <PlaceList
-                places={rec.places}
-                at={at}
-                selectedId={selectedId}
-                onSelect={setSelectedId}
-              />
-            </>
-          )}
-        </section>
+        <p className="text-xs leading-relaxed text-neutral-400">
+          로그인하면 취향과 못 먹는 것을 기억해 폰과 PC에서 같은 추천을 받아요.
+          <br />
+          하지 않아도 모든 기능을 쓸 수 있습니다.
+        </p>
       </div>
     </main>
   );

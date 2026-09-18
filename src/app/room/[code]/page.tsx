@@ -5,6 +5,8 @@ import { use, useMemo, useState } from 'react';
 import { OptionPanel } from '@/components/OptionPanel';
 import { PlaceList } from '@/components/PlaceList';
 import { PlaceMap } from '@/components/PlaceMap';
+import { AuthBar } from '@/components/AuthBar';
+import { useAuth } from '@/hooks/useAuth';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useProfile } from '@/hooks/useProfile';
 import { getSavedNickname, saveNickname, useRoom } from '@/hooks/useRoom';
@@ -19,8 +21,11 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
   const room = useRoom(code.toUpperCase());
   const profile = useProfile();
   const geo = useGeolocation();
+  const auth = useAuth();
 
-  const [nickname, setNickname] = useState(() => getSavedNickname());
+  // 로그인했으면 카카오 닉네임을, 아니면 지난번에 쓴 이름을 기본값으로.
+  const [nicknameInput, setNicknameInput] = useState(() => getSavedNickname());
+  const nickname = nicknameInput || auth.nickname || '';
   const [joined, setJoined] = useState(false);
   const [filters, setFilters] = useState<MenuFilters>(DEFAULT_FILTERS);
   const [places, setPlaces] = useState<KakaoPlace[]>([]);
@@ -57,6 +62,10 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 space-y-5 px-4 py-6">
+      <div>
+        <AuthBar />
+      </div>
+
       <header>
         <p className="text-xs text-neutral-500 dark:text-neutral-400">같이 고르기 · {state.code}</p>
         <h1 className="mt-1 text-xl font-bold">{state.placeLabel}</h1>
@@ -109,7 +118,7 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
           <input
             id="nickname"
             value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
+            onChange={(e) => setNicknameInput(e.target.value)}
             maxLength={12}
             placeholder="닉네임 (최대 12자)"
             className="w-full rounded-xl border border-neutral-200 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"

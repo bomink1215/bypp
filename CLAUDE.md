@@ -191,8 +191,9 @@ sort=distance로 받은 45건의 가장 먼 거리: 119m
 | 스타일 | Tailwind CSS v4 | 모바일 우선 UI를 빠르게 |
 | 장소 검색 | 카카오 로컬 API (REST) | 좌표+반경 검색, `FD6`/`CE7`, **일 10만 호출** 무료 |
 | 지도 | 카카오 Maps JS SDK | 로컬 API와 동일 생태계 |
-| DB | Supabase(Postgres) | 방·참가자·투표. 접근은 **서버 라우트에서 secret 키로만** 한다 |
-| 저장소 | `localStorage` | 취향 기록과 못 먹는 것. **기기 간 공유가 안 된다** |
+| DB | Supabase(Postgres) | 방·참가자·투표는 **서버 라우트에서 secret 키로만**. 로그인 사용자의 취향(`user_profiles`)만 브라우저가 RLS 아래 직접 |
+| 로그인 | Supabase Auth + 카카오 OIDC | 선택 사항. 취향을 기기 간에 유지하는 용도뿐 |
+| 저장소 | `localStorage` | 취향 기록과 못 먹는 것. 게스트는 **기기 간 공유가 안 된다**(로그인하면 계정과 동기화) |
 | 배포 | Vercel | HTTPS 자동 제공(Geolocation 필수 조건) |
 
 검토 후 제외: **네이버 지역검색 API**(한 번에 5건), **Google Places**(결제수단 필수, 국내 POI 품질), **Vite + React**(키를 가릴 백엔드 별도 필요).
@@ -200,8 +201,13 @@ sort=distance로 받은 45건의 가장 먼 거리: 119m
 ## 환경변수 규칙 (중요)
 
 ```
-KAKAO_REST_API_KEY=        # 서버 전용
-NEXT_PUBLIC_KAKAO_JS_KEY=  # 브라우저 노출됨
+KAKAO_REST_API_KEY=                    # 서버 전용 (단, 로그인 인가 URL의 client_id로는 노출됨 — 아래 참조)
+KAKAO_CLIENT_SECRET=                   # 서버 전용. 로그인 토큰 교환에 필요
+NEXT_PUBLIC_KAKAO_JS_KEY=              # 브라우저 노출됨
+SUPABASE_URL=                          # 서버 전용
+SUPABASE_SECRET_KEY=                   # 서버 전용. RLS 우회
+NEXT_PUBLIC_SUPABASE_URL=              # 브라우저 노출됨
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=  # 브라우저 노출됨. RLS의 제약을 받는다
 ```
 
 - `NEXT_PUBLIC_` 접두사가 붙은 값은 **브라우저 번들에 그대로 박힌다.**
@@ -210,17 +216,30 @@ NEXT_PUBLIC_KAKAO_JS_KEY=  # 브라우저 노출됨
 
 ## Supabase
 
-스키마는 `supabase/migrations/0001_rooms.sql`이다. **PostgREST는 DDL을 지원하지 않으므로
-대시보드 SQL Editor에서 직접 실행해야 한다.** 테이블이 없으면 `PGRST205`가 뜬다.
+스키마는 `supabase/migrations/`에 있다. **PostgREST는 DDL을 지원하지 않으므로 대시보드
+SQL Editor에서 직접 실행해야 한다.** 테이블이 없으면 `PGRST205`가 뜬다.
 
-`rooms` / `participants` / `votes` 셋 다 **RLS를 켜되 정책을 하나도 두지 않는다.** 참가자가
+- `0001_rooms.sql` — 방·참가자·투표
+- `0002_user_profiles.sql` — 로그인 사용자의 취향
+
+`user_profiles`는 RLS 정책을 제대로 건다. 로그인한 사용자는 `auth.uid()`가 있어 "본인 것만"을
+표현할 수 있기 때문이다. 그래서 이 테이블만은 브라우저가 publishable 키로 직접 읽고 쓴다.
+
+반면 `rooms` / `participants` / `votes` 셋은 **RLS를 켜되 정책을 하나도 두지 않는다.** 참가자가
 익명 토큰이라 "본인 것만"을 RLS로 표현할 수 없기 때문이다. secret 키(service_role)는 RLS를
 우회하므로 서버는 정상 동작하고, publishable 키가 새어나가도 이 테이블들은 아무것도 읽히지
 않는다.
 
-`@supabase/supabase-js`를 쓰지 않는다. 서버에서의 CRUD 몇 개뿐이라 내장 fetch로 충분하다
-(`src/lib/supabase/client.ts`). 로그인이 붙으면 그때는 `@supabase/ssr`이 필요하다 —
-세션 쿠키 처리는 직접 할 일이 아니다.
+Supabase 접근은 두 갈래로 나뉜다.
+
+| | 파일 | 방식 | 키 |
+|---|---|---|---|
+| 서버 (방) | `src/lib/supabase/client.ts` | 내장 fetch로 PostgREST 직접 호출 | secret. `server-only` |
+| 브라우저 (로그인·내 프로필) | `src/lib/supabase/browser.ts` | `@supabase/supabase-js` | publishable |
+
+서버 쪽은 CRUD 몇 개뿐이라 라이브러리 없이 fetch로 충분하다. 브라우저 쪽에만
+`supabase-js`를 쓰는 이유는 세션 저장과 토큰 갱신을 직접 구현할 일이 아니기 때문이다.
+**서버 코드에 `supabase-js`를 끌어오지 않는다** — 방 데이터는 계속 fetch 래퍼로 간다.
 
 **`SUPABASE_SECRET_KEY`는 RLS를 통째로 우회한다.** 카카오 REST 키보다 위험하다.
 `server-only`로 클라이언트 번들 유입을 빌드 타임에 막고 있다.
@@ -235,7 +254,110 @@ Supabase 공식 문서는 아직 `middleware.ts`로 안내하므로 그대로 �
 
 ## 카카오 콘솔 사전 설정
 
-`403 NotAuthorizedError: disabled OPEN_MAP_AND_LOCAL service`가 뜨면 키 문제가 아니라 **앱에서 카카오맵이 꺼져 있는 것**이다. 콘솔 → 내 애플리케이션 → 앱 선택 → **카카오맵 → 사용 설정 → 상태 ON**. (2024-12-01부터 기본값이 OFF다.)
+카카오는 기능마다 콘솔 스위치가 따로 있고 **기본값이 꺼짐**이다. 키가 멀쩡한데 안 되면
+대개 이쪽이다.
+
+- `403 NotAuthorizedError: disabled OPEN_MAP_AND_LOCAL service` → **카카오맵 → 사용 설정 ON**
+  (2024-12-01부터 기본 OFF)
+- `KOE205` → 요청한 scope가 **카카오 로그인 → 동의항목**에 없음. 우리는 `profile_nickname`만
+  요청하므로 그것만 켜져 있으면 된다 (아래 참조)
+- 로그인 콜백에서 `id_token이 없습니다` → **OpenID Connect 활성화** 꺼짐
+
+## 카카오 로그인
+
+**카카오 OIDC로 `id_token`을 직접 받아 Supabase `signInWithIdToken`에 넘긴다.**
+Supabase의 `signInWithOAuth({ provider: 'kakao' })`는 쓰지 않는다. 앞부분(토큰 받아오기)만
+우리가 하고, 세션 관리는 여전히 Supabase가 한다.
+
+```
+AuthBar 로그인 버튼 → useAuth.signIn(next)
+  → GET /api/auth/kakao/start        state·next를 httpOnly 쿠키에 심고 카카오 인가 화면으로 302
+                                     scope = "openid profile_nickname"
+  → kauth.kakao.com (사용자 동의)
+  → GET /api/auth/kakao/callback     state 대조 → 코드를 id_token으로 교환 (client_secret, 서버에서)
+                                     → next#kakao_id_token=… 로 302
+  → useAuth가 프래그먼트를 읽고 즉시 지운 뒤 signInWithIdToken({ provider: 'kakao' })
+  → onAuthStateChange(SIGNED_IN) → 로컬·계정 취향 병합
+```
+
+- **id_token은 URL 프래그먼트(`#`)로 넘긴다.** 프래그먼트는 서버로 전송되지 않아 로그·리퍼러에
+  남지 않는다. 쓰자마자 `history.replaceState`로 지운다.
+- **`state`는 CSRF 방어다.** 우리가 시작하지 않은 콜백은 쿠키와 대조해 걸러낸다.
+- **돌아갈 주소(`next`)는 쿠키에 둔다.** URL로 실어 보내면 조작될 수 있다. `/`로 시작하고
+  `//`로 시작하지 않는 같은 사이트 경로만 받는다(오픈 리다이렉트 방지).
+- 실패하면 `?login_error=사유`로 돌아오고, `useAuth`가 꺼내 보여준 뒤 지운다.
+  로그인 실패가 앱을 막지 않는다 — 게스트 상태로 계속 쓴다.
+
+### 왜 Supabase의 카카오 OAuth를 안 쓰나
+
+**Supabase는 scope에 `account_email`을 하드코딩해 보내고, 우리가 넘긴 `scopes`는 덧붙기만
+한다.** 실측:
+
+```
+scopes 미지정           → "account_email profile_image profile_nickname"
+scopes=profile_nickname → "account_email profile_image profile_nickname profile_nickname"
+```
+
+`account_email`은 개인 개발자 앱에 기본 제공되지 않아(비즈 앱 전환 + 승인 필요) `KOE205`로
+거절당한다. 우리는 이메일이 필요하지도 않다. 그래서 인가 요청을 직접 만들어 닉네임만 요청한다.
+
+### 콘솔 설정
+
+카카오 developers:
+
+- **카카오 로그인 → 사용 설정 ON**
+- **OpenID Connect 활성화 ON** — 꺼져 있으면 토큰 응답에 `id_token`이 없다
+- **Redirect URI**: `<origin>/api/auth/kakao/callback`. 로컬은 `http://localhost:3000/api/auth/kakao/callback`,
+  배포 도메인도 따로 등록한다. (Supabase의 `/auth/v1/callback`이 아니다 — 콜백을 우리가 받는다)
+- **동의항목**: `profile_nickname`. (`openid`는 동의항목이 아니라 OIDC 스위치로 켜진다)
+- **Client Secret**: 앱 → 플랫폼 키 → REST API 키 → 클라이언트 시크릿. 새로 만든 REST 키는
+  이미 활성화된 상태로 추가되고, 켜져 있으면 토큰 교환에 필수다. **`KAKAO_CLIENT_SECRET`에 넣는다.**
+
+Supabase 대시보드:
+
+- **Authentication → Providers → Kakao 활성화.** `signInWithIdToken`도 이 provider 설정으로
+  토큰을 검증한다. Client ID는 카카오 REST API 키.
+- **"이메일 없는 사용자 허용" ON** — 이메일을 요청하지 않으므로 id_token에 이메일이 없다.
+
+우리 코드는 닉네임만 읽고, 그것도 화면 표시용이라 따로 저장하지 않는다.
+
+### REST 키가 브라우저에 노출된다 (감수한 위험)
+
+OAuth 규격상 `client_id`는 공개 값이라 인가 요청 URL에 그대로 실린다. 인가 URL을 서버
+(`/api/auth/kakao/start`)에서 만들어도 브라우저가 그 URL로 이동하므로 가려지지 않는다.
+
+```
+kauth.kakao.com/oauth/authorize?client_id=<REST API 키>...
+```
+
+문제는 **그 키가 로컬 API 키와 같은 키**라는 점이다. 로컬 API는 `Authorization: KakaoAK <키>`
+하나로 인증되고 Referer 제한이 없어서, 로그인 버튼을 눌러본 사람은 누구나 그 키로 우리
+쿼터(일 10만)를 쓸 수 있다. **"REST 키는 서버에만 둔다"는 원칙이 카카오 로그인을 붙이는
+순간 구조적으로 깨진다 — 카카오 설계상 피할 수 없다.**
+
+개인 프로젝트 규모에서 일 10만이 소진될 일은 거의 없어 지금은 감수한다. 쿼터 남용이 실제로
+관측되면 **로그인용 앱과 지도·검색용 앱을 카카오에서 분리**하는 것이 해법이다(앱을 두 개
+관리해야 하므로 필요해지기 전에는 하지 않는다).
+
+### `@supabase/ssr`과 proxy를 쓰지 않는다
+
+로그인으로 하려는 건 "내 취향을 기기 간에 유지"뿐이고, 그 데이터(`user_profiles`)는 RLS로
+보호되어 브라우저가 직접 다루면 된다. 서버가 세션을 알 필요가 없으니 세션 쿠키도, 토큰
+갱신용 proxy도 필요 없다. Next 16 문서도 proxy를 "다른 방법이 없을 때의 최후 수단"이라고
+못박는다. 방 데이터는 익명 참가자 때문에 여전히 서버 라우트 + secret 키로 간다.
+
+### 게스트 → 로그인 병합
+
+로그인은 **선택이다.** 막는 기능이 하나도 없고, 안 눌러도 전부 그대로 돌아간다.
+로그인 시 로컬에 쌓인 것과 계정에 있는 것을 합친다.
+
+| | 합치는 법 | 이유 |
+|---|---|---|
+| 못 먹는 것 | **합집합** | "해산물 못 먹음"은 기기의 속성이 아니라 사실이다 |
+| 취향 카운트 | **더하기** | 좋아요 3번 + 2번 = 5번. 같은 사람의 평가다 |
+
+어느 한쪽으로 덮어쓰지 않는다. 로그인했다고 그동안 쌓은 게 날아가도, 다른 기기에서 쌓은
+것을 잃어도 안 된다.
 
 ## 구현 시 반복해서 틀리는 지점
 
@@ -258,23 +380,27 @@ npm run verify:seed  # 시드 메뉴가 원칙 1을 지키는지 검사 (카카�
 ## 구조
 
 ```
-src/app/                    App Router 페이지
+src/app/page.tsx            안내 화면 (시작하기 · 같이 고르기 · 로그인)
+src/app/recommend/          혼자 추천 화면
+src/app/room/               방 만들기 / 코드로 입장
+src/app/room/[code]/        방 화면
 src/app/api/candidates/     주변 업종 → 메뉴 후보 역산 (카카오 카테고리 검색)
 src/app/api/places/         메뉴명 → 가게 목록 (카카오 키워드 검색)
 src/app/api/geocode/        좌표 → 주소 (지도에서 찍은 곳 표시용)
 src/app/api/rooms/          방 생성·입장·조건 제출·투표·마감
-src/app/room/[code]/        방 화면
-src/lib/kakao/              카카오 API 계층. client.ts는 server-only
+src/app/api/auth/kakao/     카카오 로그인 start(인가 화면으로) / callback(id_token 교환)
+src/lib/kakao/              카카오 API 계층. client.ts·oidc.ts는 server-only
                             relevance.ts — 느슨한 키워드 결과에서 실제로 파는 집만 추림
 src/lib/menu/               시드 데이터, 업종 매핑, 영업시간 추정 테이블
 src/lib/preference/         취향 기록(localStorage) + 학습 점수
-src/lib/profile/            못 먹는 것(localStorage)
+src/lib/profile/            못 먹는 것(localStorage) + 로그인 계정 동기화
 src/lib/room/               방 도메인 — 조건 합치기, 서비스 로직
-src/lib/supabase/           PostgREST 얇은 래퍼. server-only
+src/lib/supabase/           client.ts — PostgREST 얇은 래퍼. server-only
+                            browser.ts — 로그인·내 프로필용 supabase-js 클라이언트
 supabase/migrations/        DB 스키마 (대시보드에서 수동 실행)
 src/lib/recommend.ts        후보 도출, 필터 완화, 가중 랜덤
-src/hooks/                  useGeolocation, useRecommendation
-src/components/             OptionPanel, MenuCard, PlaceList, PlaceMap
+src/hooks/                  useGeolocation, useRecommendation, useRoom, useProfile, useAuth
+src/components/             OptionPanel, MenuCard, PlaceList, PlaceMap, LocationPicker, AuthBar
 scripts/verify-seed.ts      원칙 1 검사
 ```
 
