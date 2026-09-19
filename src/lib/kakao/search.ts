@@ -82,6 +82,38 @@ export async function searchByKeyword(
   return res.documents;
 }
 
+/** 위치 검색 결과 한 건. 지도 이동에 필요한 것만 추린다. */
+export type LocationHit = {
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+};
+
+/**
+ * 장소 이름 → 좌표. "강남역", "코엑스"처럼 **만날 곳**을 찾는 용도다.
+ *
+ * 음식점 검색(`searchByKeyword`)과 달리 업종을 걸지 않는다. 역·건물·동네 이름이 필요하기 때문이다.
+ * 좌표도 넘기지 않는다 — 지금 지도가 보는 곳과 먼 곳을 찾으려는 경우가 많고, 카카오의 정확도순이
+ * "강남역"을 치면 강남역을 맨 위에 준다.
+ */
+export async function searchLocation(query: string): Promise<LocationHit[]> {
+  const res = await kakaoFetch(
+    'search/keyword',
+    { query, size: 5 },
+    // 장소 이름 → 좌표는 거의 안 바뀐다. 같은 검색어를 하루 동안 재사용해 쿼터를 아낀다.
+    { revalidate: 86_400 },
+  );
+
+  return res.documents.map((d) => ({
+    name: d.place_name,
+    address: d.road_address_name || d.address_name,
+    // 카카오 x는 경도, y는 위도다.
+    lat: Number(d.y),
+    lng: Number(d.x),
+  }));
+}
+
 /** 좌표 → 주소. 지도에서 찍은 지점이 어디인지 사람이 읽을 수 있게 한다. */
 export async function coordToAddress(coords: Coords): Promise<string | null> {
   const res = await kakaoFetch<{

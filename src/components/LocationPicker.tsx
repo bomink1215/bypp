@@ -6,6 +6,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { Coords } from '@/hooks/useGeolocation';
 import type { GeocodeResponse } from '@/app/api/geocode/route';
+import type { SearchLocationResponse } from '@/app/api/search-location/route';
+import type { LocationHit } from '@/lib/kakao/search';
 
 type Props = {
   /** 지도를 처음 띄울 중심. 보통 현재 위치이고, 없으면 서울시청. */
@@ -78,6 +80,40 @@ export function LocationPicker({ initial, onPick, onCancel }: Props) {
     };
   }, []);
 
+  /*
+   * 이름으로 찾기. 노트북에서 지도를 끌어 먼 곳까지 가기가 불편하다는 피드백으로 붙였다.
+   * 결과를 누르면 지도만 옮기고, 최종 확정은 여전히 "여기로 정하기"로 한다 — 역 출구처럼
+   * 조금 옮겨서 고르고 싶을 수 있다.
+   */
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<LocationHit[] | null>(null);
+  const [searching, setSearching] = useState(false);
+
+  const search = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = query.trim();
+    if (!q) return;
+
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/search-location?q=${encodeURIComponent(q)}`);
+      const data = (await res.json()) as SearchLocationResponse & { error?: string };
+      setResults(res.ok ? data.results : []);
+    } catch {
+      setResults([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const moveTo = (hit: LocationHit) => {
+    setResults(null);
+    setQuery(hit.name);
+    centerRef.current = { lat: hit.lat, lng: hit.lng };
+    // 지도가 멈추면 idle 이벤트가 주소를 다시 물어본다.
+    mapRef.current?.setCenter(new window.kakao.maps.LatLng(hit.lat, hit.lng));
+  };
+
   if (!JS_KEY) {
     return (
       <div className="rounded-2xl border border-dashed border-neutral-300 p-6 text-center text-xs text-neutral-500">
@@ -93,6 +129,45 @@ export function LocationPicker({ initial, onPick, onCancel }: Props) {
         strategy="afterInteractive"
         onReady={() => window.kakao?.maps.load(() => setReady(true))}
       />
+
+      <form onSubmit={(e) => void search(e)} className="flex gap-2">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          maxLength={40}
+          placeholder="역·건물·동네 이름으로 찾기"
+          aria-label="장소 검색"
+          className="min-w-0 flex-1 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm"
+        />
+        <button
+          type="submit"
+          disabled={searching || query.trim().length === 0}
+          className="shrink-0 rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+        >
+          {searching ? '찾는 중…' : '찾기'}
+        </button>
+      </form>
+
+      {results && (
+        <ul className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+          {results.length === 0 ? (
+            <li className="px-3 py-2.5 text-xs text-neutral-500">찾지 못했어요. 다른 이름으로 검색해보세요.</li>
+          ) : (
+            results.map((hit) => (
+              <li key={`${hit.lat},${hit.lng},${hit.name}`} className="border-t border-neutral-100 first:border-0">
+                <button
+                  type="button"
+                  onClick={() => moveTo(hit)}
+                  className="block w-full px-3 py-2.5 text-left hover:bg-neutral-50"
+                >
+                  <span className="block truncate text-sm font-medium">{hit.name}</span>
+                  <span className="block truncate text-xs text-neutral-500">{hit.address}</span>
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+      )}
 
       <div className="relative h-56 overflow-hidden rounded-2xl border border-neutral-200">
         <div ref={containerRef} className="h-full w-full" />
