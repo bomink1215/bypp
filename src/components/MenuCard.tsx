@@ -27,6 +27,7 @@ const RELAX_LABEL: Record<Relaxation, string> = {
   egg: '달걀',
   dairy: '유제품',
   price: '가격대',
+  staple: '밥·면',
 };
 
 /** 가게 가격이 아니라 메뉴의 보통 가격대다. 카드에서도 '대략'임을 드러낸다. */

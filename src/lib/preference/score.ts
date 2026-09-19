@@ -51,6 +51,8 @@ function axesOf(menu: Menu): string[] {
     `seafood:${menu.seafood ? 'yes' : 'no'}`,
     `flour:${menu.flour ? 'yes' : 'no'}`,
     `soup:${menu.soup ? 'yes' : 'no'}`,
+    // 면 요리에 좋아요를 자주 누르는 사람에게 안 눌러본 면 요리도 같이 오르게 한다.
+    `staple:${menu.staple}`,
     `weight:${menu.weight}`,
   ];
 }

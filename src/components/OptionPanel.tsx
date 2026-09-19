@@ -38,6 +38,13 @@ const MEAT_KINDS: readonly (readonly [MenuFilters['meatKind'], string])[] = [
   ['chicken', '닭'],
 ];
 
+const STAPLES: readonly (readonly [MenuFilters['staple'], string])[] = [
+  ['any', '상관없음'],
+  ['rice', '밥'],
+  ['noodle', '면'],
+  ['other', '그 외'],
+];
+
 const PRICES: readonly (readonly [MenuFilters['price'], string])[] = [
   ['any', '상관없음'],
   ['low', '1만원 이하'],
@@ -405,12 +412,23 @@ export function OptionPanel({
           </span>
         </button>
         {!expanded && (
-          <p className="mt-1 text-[11px] text-neutral-400">맛 · 식재료 · 양 · 가격대 · 혼밥 · 격식 등</p>
+          <p className="mt-1 text-[11px] text-neutral-400">밥·면 · 맛 · 식재료 · 양 · 가격대 · 혼밥 · 격식 등</p>
         )}
       </section>
 
       {expanded && (
         <>
+        {/* "밥 먹을까, 면 먹을까"가 가장 먼저 하는 고민이라 맨 위에 둔다. */}
+        <Group title="밥 · 면">
+          <div className="flex flex-wrap gap-2">
+            {STAPLES.map(([staple, label]) => (
+              <Chip key={staple} active={filters.staple === staple} onClick={() => set('staple', staple)}>
+                {label}
+              </Chip>
+            ))}
+          </div>
+        </Group>
+
         <Group title="맛">
           <div className="space-y-4">
             <TasteBar left="순함" right="매움" value={filters.spicy} onChange={(v) => set('spicy', v)} />

@@ -48,6 +48,10 @@ export function parseMeatKind(raw: unknown): MenuFilters['meatKind'] {
   return raw === 'pork' || raw === 'beef' || raw === 'chicken' ? raw : 'any';
 }
 
+export function parseStaple(raw: unknown): MenuFilters['staple'] {
+  return raw === 'rice' || raw === 'noodle' || raw === 'other' ? raw : 'any';
+}
+
 export function parsePrice(raw: unknown): MenuFilters['price'] {
   return raw === 'low' || raw === 'mid' || raw === 'high' ? raw : 'any';
 }
@@ -75,5 +79,6 @@ export function parseFilters(sp: URLSearchParams): MenuFilters {
     egg: parseToggle(sp.get('egg')),
     dairy: parseToggle(sp.get('dairy')),
     price: parsePrice(sp.get('price')),
+    staple: parseStaple(sp.get('staple')),
   };
 }

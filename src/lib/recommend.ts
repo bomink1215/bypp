@@ -44,6 +44,8 @@ export function matchesFilters(menu: Menu, f: MenuFilters): boolean {
 
   if (f.price !== 'any' && menu.price !== f.price) return false;
 
+  if (f.staple !== 'any' && menu.staple !== f.staple) return false;
+
   return true;
 }
 
@@ -146,6 +148,8 @@ const RELAX_ORDER = [
   'solo',
   'weight',
   'soup',
+  // 밥·면은 국물보다 뚜렷한 바람이라 국물 다음에 푼다.
+  'staple',
   'price',
   'formal',
   // 고기 종류는 '오늘은 소고기' 같은 바람이라 식재료 중 가장 먼저 푼다.

@@ -32,6 +32,14 @@ export type MeatKind = 'pork' | 'beef' | 'chicken';
  */
 export type PriceBand = 'low' | 'mid' | 'high';
 
+/**
+ * 무엇으로 배를 채우나. "밥 먹을까, 면 먹을까"는 메뉴를 고를 때 가장 먼저 하는 고민이라 축으로 둔다.
+ * 조리 방식(구이·튀김…)으로 나누는 안도 봤지만 튀김·찜이 3개씩이라 거의 메뉴를 직접 고르는
+ * 셈이 되고 어디에도 안 드는 메뉴가 8개였다. 이쪽은 20 / 12 / 19로 고르게 나뉜다.
+ *   rice 밥이 주식 / noodle 면(수제비·쌀국수 포함) / other 고기·요리·빵·떡 위주
+ */
+export type Staple = 'rice' | 'noodle' | 'other';
+
 export type Weight = 'light' | 'normal' | 'heavy';
 
 /** 0~3 눈금. 맛 슬라이더 세 축이 공유한다. */
@@ -70,6 +78,8 @@ export type Menu = {
   egg: boolean;
   /** 치즈·버터·크림·우유. 피자·크림 파스타·리조또 같은 것. */
   dairy: boolean;
+
+  staple: Staple;
 
   // ── 기타 ──
   soup: boolean;
@@ -123,6 +133,8 @@ export type MenuFilters = {
   meatKind: 'any' | MeatKind;
   egg: Toggle;
   dairy: Toggle;
+  // 밥·면 — 하드
+  staple: 'any' | Staple;
   // 양 — 하드
   weight: 'any' | 'light' | 'heavy';
   // 가격대 — 하드
@@ -141,6 +153,7 @@ export const DEFAULT_FILTERS: MenuFilters = {
   meat: 'any',
   seafood: 'any',
   flour: 'any',
+  staple: 'any',
   meatKind: 'any',
   egg: 'any',
   dairy: 'any',
@@ -159,6 +172,7 @@ export type Relaxation =
   | 'seafood'
   | 'flour'
   | 'meatKind'
+  | 'staple'
   | 'egg'
   | 'dairy'
   | 'price'
@@ -191,6 +205,7 @@ export function filtersToParams(f: MenuFilters): Record<string, string> {
     seafood: f.seafood,
     flour: f.flour,
     meatKind: f.meatKind,
+    staple: f.staple,
     egg: f.egg,
     dairy: f.dairy,
     weight: f.weight,
