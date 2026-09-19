@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
       rating: body.rating,
       body: body.body,
       roomCode: body.roomCode,
+      visitId: body.visitId,
     });
     return Response.json({ ok: true });
   } catch (e) {

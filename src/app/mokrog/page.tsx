@@ -5,12 +5,12 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { Brand } from '@/components/Brand';
 import { HeaderNav } from '@/components/HeaderNav';
-import { Stars } from '@/components/ReviewSheet';
+import { ReviewSheet, Stars } from '@/components/ReviewSheet';
 import { useAuth } from '@/hooks/useAuth';
 import { MENU_BY_ID } from '@/lib/menu/seed';
 import { computeBadges, type Badge } from '@/lib/review/badges';
-import { deleteMyReview, fetchMyReviews } from '@/lib/review/client';
-import type { MyReview } from '@/lib/review/types';
+import { deleteMyReview, deleteMyVisit, fetchMyReviews, fetchMyVisits } from '@/lib/review/client';
+import type { MyReview, MyVisit } from '@/lib/review/types';
 
 /**
  * 나의 먹로그.
@@ -22,6 +22,8 @@ import type { MyReview } from '@/lib/review/types';
 export default function MokrogPage() {
   const auth = useAuth();
   const [reviews, setReviews] = useState<MyReview[] | null>(null);
+  const [visits, setVisits] = useState<MyVisit[]>([]);
+  const [writing, setWriting] = useState<MyVisit | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -30,10 +32,11 @@ export default function MokrogPage() {
   useEffect(() => {
     if (sessionKey === null) return;
     let alive = true;
-    fetchMyReviews()
-      .then((list) => {
+    Promise.all([fetchMyReviews(), fetchMyVisits()])
+      .then(([list, pending]) => {
         if (!alive) return;
         setReviews(list);
+        setVisits(pending);
         setError(null);
       })
       .catch((e: unknown) => alive && setError(e instanceof Error ? e.message : '기록을 불러오지 못했어요.'));
@@ -43,6 +46,15 @@ export default function MokrogPage() {
   }, [sessionKey, reloadKey]);
 
   const badges = useMemo(() => computeBadges(reviews ?? []), [reviews]);
+
+  const removeVisit = async (id: string) => {
+    if (!window.confirm('방문한 가게에서 뺄까요?')) return;
+    try {
+      await deleteMyVisit(id);
+    } finally {
+      setReloadKey((k) => k + 1);
+    }
+  };
 
   const remove = async (id: string) => {
     if (!window.confirm('이 기록을 지울까요? 가게에 남긴 별점과 후기도 함께 지워져요.')) return;
@@ -68,7 +80,7 @@ export default function MokrogPage() {
               지금까지 <span className="font-semibold text-brand">{reviews.length}끼</span>를 기록했어요.
             </>
           ) : (
-            '다녀온 가게에서 "다녀왔어요"를 누르면 여기에 쌓여요.'
+            '가게 목록에서 "여기로 정했어요"를 누르고, 다녀와서 후기를 쓰면 여기에 쌓여요.'
           )}
         </p>
         {!auth.session && auth.available && (
@@ -78,7 +90,45 @@ export default function MokrogPage() {
         )}
       </header>
 
+      {/*
+        방문한 가게를 업적보다 위에 둔다. 먹로그에 들어오는 가장 흔한 이유가 "아까 거기 후기 쓰기"라
+        할 일을 먼저 보여준다.
+      */}
+      {visits.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-xs font-semibold tracking-wide text-neutral-400">
+            방문한 가게 · 후기를 기다려요 {visits.length}
+          </h2>
+          <ul className="space-y-2">
+            {visits.map((v) => (
+              <li key={v.id}>
+                <VisitCard
+                  visit={v}
+                  onWrite={() => setWriting(v)}
+                  onRemove={() => void removeVisit(v.id)}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <BadgeShelf badges={badges} />
+
+      {writing && (
+        <ReviewSheet
+          place={writing.place}
+          menuId={writing.menuId}
+          menuName={writing.menuId ? (MENU_BY_ID.get(writing.menuId)?.name ?? null) : null}
+          visitId={writing.id}
+          hasCompanions={writing.companions.length > 0}
+          onClose={() => setWriting(null)}
+          onDone={() => {
+            setWriting(null);
+            setReloadKey((k) => k + 1);
+          }}
+        />
+      )}
 
       {error && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
@@ -108,6 +158,42 @@ export default function MokrogPage() {
         </ol>
       )}
     </main>
+  );
+}
+
+/** 후기를 기다리는 한 끼. 누르면 바로 후기 쓰기로 간다. */
+function VisitCard({ visit, onWrite, onRemove }: { visit: MyVisit; onWrite: () => void; onRemove: () => void }) {
+  const menu = visit.menuId ? MENU_BY_ID.get(visit.menuId) : null;
+  const date = new Date(visit.eatenAt).toLocaleDateString('ko-KR', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+  });
+
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-dashed border-brand/40 bg-white p-4">
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] text-neutral-500">{date}</p>
+        <p className="truncate font-bold">{visit.place.name}</p>
+        <p className="truncate text-xs text-neutral-500">
+          {[menu?.name, visit.companions.length > 0 ? `${visit.companions.join(' · ')}와 함께` : null]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+      </div>
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        <button
+          type="button"
+          onClick={onWrite}
+          className="rounded-full bg-brand px-3.5 py-2 text-xs font-semibold text-white shadow-sm shadow-brand/25"
+        >
+          후기 쓰기
+        </button>
+        <button type="button" onClick={onRemove} className="text-[11px] text-neutral-400 underline underline-offset-2">
+          빼기
+        </button>
+      </div>
+    </div>
   );
 }
 

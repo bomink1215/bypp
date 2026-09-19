@@ -48,6 +48,36 @@ export type MyReview = {
 };
 
 /**
+ * 방문한 가게 — 골랐지만 아직 후기를 안 쓴 한 끼. 본인에게만 내려간다.
+ * 후기를 쓰면 사라지고 같은 정보로 `MyReview` 카드가 생긴다.
+ */
+export type MyVisit = {
+  id: string;
+  place: ReviewPlace;
+  menuId: string | null;
+  companions: string[];
+  fromRoom: boolean;
+  eatenAt: string;
+};
+
+export type VisitRow = {
+  id: string;
+  author_token: string;
+  user_id: string | null;
+  place_id: string;
+  place_name: string;
+  place_category: string | null;
+  place_address: string | null;
+  place_url: string | null;
+  menu_id: string | null;
+  companions: string[];
+  room_code: string | null;
+  eaten_at: string;
+  eaten_on: string;
+  created_at: string;
+};
+
+/**
  * 가게 목록에 보이는 공개 후기.
  *
  * **함께한 사람, 작성자 토큰, 방 코드는 절대 넣지 않는다.** 이름은 작성자가 정한 닉네임뿐이다.

@@ -2,7 +2,7 @@
 
 import { getToken } from '@/hooks/useRoom';
 import { authAvailable, supabaseBrowser } from '@/lib/supabase/browser';
-import type { MyReview, PublicReview, RatingsResponse, ReviewPlace } from './types';
+import type { MyReview, MyVisit, PublicReview, RatingsResponse, ReviewPlace } from './types';
 
 /**
  * 후기 API를 부르는 브라우저 쪽 함수들.
@@ -41,8 +41,27 @@ export async function submitReview(input: {
   body: string;
   nickname: string;
   roomCode?: string;
+  /** 먹로그의 방문한 가게에서 쓰는 경우. 서버가 그 방문 기록의 가게·메뉴·함께한 사람을 쓴다. */
+  visitId?: string;
 }): Promise<void> {
   await call('/api/reviews', json('POST', { ...(await identity()), ...input }));
+}
+
+/** "여기로 정했어요". 같은 가게를 같은 날 다시 눌러도 하나만 남는다. */
+export async function addVisit(input: {
+  place: ReviewPlace;
+  menuId: string | null;
+  roomCode?: string;
+}): Promise<void> {
+  await call('/api/visits', json('POST', { ...(await identity()), ...input }));
+}
+
+export async function fetchMyVisits(): Promise<MyVisit[]> {
+  return (await call<{ visits: MyVisit[] }>('/api/visits/mine', json('POST', await identity()))).visits;
+}
+
+export async function deleteMyVisit(id: string): Promise<void> {
+  await call(`/api/visits/${id}`, json('DELETE', await identity()));
 }
 
 export async function fetchMyReviews(): Promise<MyReview[]> {

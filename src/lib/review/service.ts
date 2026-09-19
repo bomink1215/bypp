@@ -7,10 +7,12 @@ import type { ParticipantRow, RoomRow } from '../room/types';
 import {
   REVIEW_BODY_MAX,
   type MyReview,
+  type MyVisit,
   type PublicReview,
   type RatingSummary,
   type ReviewPlace,
   type ReviewRow,
+  type VisitRow,
 } from './types';
 
 /**
@@ -87,22 +89,17 @@ async function companionsFromRoom(roomCode: string, token: string): Promise<{ co
   };
 }
 
-export async function createReview(
-  author: Author,
-  input: {
-    nickname: unknown;
-    place: unknown;
-    menuId: unknown;
-    rating: unknown;
-    body: unknown;
-    roomCode: unknown;
-  },
-): Promise<void> {
-  const rating = Number(input.rating);
-  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-    throw new BadRequestError('별점은 1~5 사이로 골라주세요.');
-  }
+/** 이 한 끼가 누구와, 언제, 무엇이었나. 후기와 방문한 가게가 같은 규칙으로 만든다. */
+type Meal = {
+  place: ReviewPlace;
+  menuId: string | null;
+  companions: string[];
+  roomCode: string | null;
+  eatenAt: Date;
+};
 
+/** 클라이언트가 보낸 가게·메뉴·방 코드로 한 끼를 만든다. 함께한 사람은 방에서 서버가 읽는다. */
+async function mealFrom(author: Author, input: { place: unknown; menuId: unknown; roomCode: unknown }): Promise<Meal> {
   const place = parsePlace(input.place);
   const menuId = typeof input.menuId === 'string' && MENU_BY_ID.has(input.menuId) ? input.menuId : null;
 
@@ -115,11 +112,57 @@ export async function createReview(
     if (fromRoom.eatAt) {
       roomCode = input.roomCode;
       companions = fromRoom.companions;
-      // 약속 시각이 지났으면 그때 먹은 것으로 남긴다. 아직 전이면(미리 쓰는 경우) 지금으로.
-      const planned = new Date(fromRoom.eatAt);
-      if (planned.getTime() <= Date.now()) eatenAt = planned;
+      // 약속 시각을 먹은 때로 남긴다. 사흘 뒤 약속으로 미리 담아도 그날 날짜로 쌓인다.
+      eatenAt = new Date(fromRoom.eatAt);
     }
   }
+
+  return { place, menuId, companions, roomCode, eatenAt };
+}
+
+/** 방문한 가게 하나를 찾는다. 내 것이 아니면 없는 셈이다. */
+async function findMyVisit(visitId: unknown, author: Author): Promise<VisitRow | null> {
+  if (typeof visitId !== 'string' || !/^[0-9a-f-]{36}$/.test(visitId)) return null;
+  const rows = await db.select<VisitRow>('visits', { id: `eq.${visitId}`, or: mineFilter(author), select: '*' });
+  return rows[0] ?? null;
+}
+
+function mealFromVisit(v: VisitRow): Meal {
+  return {
+    place: {
+      id: v.place_id,
+      name: v.place_name,
+      category: v.place_category ?? '',
+      address: v.place_address ?? '',
+      url: v.place_url ?? '',
+    },
+    menuId: v.menu_id,
+    companions: v.companions ?? [],
+    roomCode: v.room_code,
+    eatenAt: new Date(v.eaten_at),
+  };
+}
+
+export async function createReview(
+  author: Author,
+  input: {
+    nickname: unknown;
+    place: unknown;
+    menuId: unknown;
+    rating: unknown;
+    body: unknown;
+    roomCode: unknown;
+    /** 먹로그의 "방문한 가게"에서 쓰는 경우. 있으면 가게·메뉴·함께한 사람을 거기서 가져온다. */
+    visitId?: unknown;
+  },
+): Promise<void> {
+  const rating = Number(input.rating);
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    throw new BadRequestError('별점은 1~5 사이로 골라주세요.');
+  }
+
+  const visit = await findMyVisit(input.visitId, author);
+  const { place, menuId, companions, roomCode, eatenAt } = visit ? mealFromVisit(visit) : await mealFrom(author, input);
 
   await db.insert('reviews', {
     author_token: author.token,
@@ -138,6 +181,94 @@ export async function createReview(
     eaten_at: eatenAt.toISOString(),
     eaten_on: koreanDate(eatenAt),
   });
+
+  // 후기가 됐으니 "방문한 가게"에서는 뺀다. 같은 한 끼가 두 곳에 있으면 헷갈린다.
+  // 먹로그가 아니라 가게 목록에서 바로 썼어도, 같은 가게·같은 날 담아 둔 방문은 이 후기로 끝난 것이다.
+  if (visit) {
+    await db.remove('visits', { id: `eq.${visit.id}` });
+  } else {
+    await db.remove('visits', {
+      or: mineFilter(author),
+      place_id: `eq.${place.id}`,
+      eaten_on: `eq.${koreanDate(eatenAt)}`,
+    });
+  }
+}
+
+// ── 방문한 가게 ────────────────────────────────────────────────────
+
+/**
+ * "여기로 정했어요" — 고른 가게를 먹로그의 방문한 가게에 담는다.
+ *
+ * 같은 가게를 같은 날 두 번 담으면 한 번만 남긴다. 후기 제한이 아니라 두 번 누른 걸 걸러내는
+ * 것이다 — 후기를 쓰면 방문 행이 사라지므로 저녁에 다시 담을 수 있다.
+ *
+ * 방에서 정한 한 끼는 방 하나에 한 번만 담는다. 방 화면을 열 때마다 자동으로 담기 때문에,
+ * 이미 후기까지 쓴 방을 다시 열었을 때 방문한 가게에 또 생기면 안 된다.
+ */
+export async function createVisit(
+  author: Author,
+  input: { place: unknown; menuId: unknown; roomCode: unknown },
+): Promise<void> {
+  const meal = await mealFrom(author, input);
+  const eatenOn = koreanDate(meal.eatenAt);
+
+  if (meal.roomCode) {
+    const byRoom = { or: mineFilter(author), room_code: `eq.${meal.roomCode}`, select: 'id' };
+    const [visits, reviews] = await Promise.all([
+      db.select<VisitRow>('visits', byRoom),
+      db.select<ReviewRow>('reviews', byRoom),
+    ]);
+    if (visits.length > 0 || reviews.length > 0) return;
+  } else {
+    const existing = await db.select<VisitRow>('visits', {
+      or: mineFilter(author),
+      place_id: `eq.${meal.place.id}`,
+      eaten_on: `eq.${eatenOn}`,
+      select: 'id',
+    });
+    if (existing.length > 0) return;
+  }
+
+  await db.insert('visits', {
+    author_token: author.token,
+    user_id: author.userId,
+    place_id: meal.place.id,
+    place_name: meal.place.name,
+    place_category: meal.place.category || null,
+    place_address: meal.place.address || null,
+    place_url: meal.place.url || null,
+    menu_id: meal.menuId,
+    companions: meal.companions,
+    room_code: meal.roomCode,
+    eaten_at: meal.eatenAt.toISOString(),
+    eaten_on: eatenOn,
+  });
+}
+
+export async function listVisits(author: Author): Promise<MyVisit[]> {
+  const rows = await db.select<VisitRow>('visits', {
+    or: mineFilter(author),
+    select: '*',
+    order: 'eaten_at.desc',
+    limit: '100',
+  });
+  return rows.map((v) => {
+    const meal = mealFromVisit(v);
+    return {
+      id: v.id,
+      place: meal.place,
+      menuId: meal.menuId,
+      companions: meal.companions,
+      fromRoom: v.room_code !== null,
+      eatenAt: v.eaten_at,
+    };
+  });
+}
+
+export async function deleteVisit(id: string, author: Author): Promise<void> {
+  if (!/^[0-9a-f-]{36}$/.test(id)) throw new BadRequestError('방문 기록이 올바르지 않아요.');
+  await db.remove('visits', { id: `eq.${id}`, or: mineFilter(author) });
 }
 
 function toMine(r: ReviewRow): MyReview {
@@ -222,5 +353,10 @@ export async function deleteReview(id: string, author: Author): Promise<void> {
 
 /** 로그인하면 이 브라우저에서 게스트로 쓴 후기를 계정에 묶는다. 다른 기기에서도 보이게 된다. */
 export async function claimReviews(token: string, userId: string): Promise<void> {
-  await db.update('reviews', { author_token: `eq.${token}`, user_id: 'is.null' }, { user_id: userId });
+  const mine = { author_token: `eq.${token}`, user_id: 'is.null' };
+  // 후기와 아직 후기를 안 쓴 방문한 가게를 함께 옮긴다. 한쪽만 옮기면 먹로그가 반쪽이 된다.
+  await Promise.all([
+    db.update('reviews', mine, { user_id: userId }),
+    db.update('visits', mine, { user_id: userId }),
+  ]);
 }

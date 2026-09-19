@@ -18,6 +18,7 @@ import type { KakaoPlace } from '@/lib/kakao/types';
 import { RESTRICTION_LABEL } from '@/lib/menu/restrictions';
 import { DEFAULT_FILTERS, type MenuFilters } from '@/lib/menu/types';
 import { getPreferencesSnapshot, recordEaten, setPreferences } from '@/lib/preference/store';
+import { addVisit } from '@/lib/review/client';
 import type { RoomState } from '@/lib/room/types';
 import type { When } from '@/lib/when';
 
@@ -83,6 +84,38 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
     if (prefs.eaten?.[decidedMenuId] === eatAtMs) return;
     setPreferences(recordEaten(prefs, decidedMenuId, eatAtMs));
   }, [decidedMenuId, eatAtMs]);
+
+  /*
+   * 가게까지 정해지면 이 기기 주인의 먹로그 "방문한 가게"에 담는다. 모두 같이 정한 곳이라 따로
+   * 누르게 하지 않는다. 먹고 와서 브라우저를 닫았더라도 먹로그에서 후기를 쓸 수 있게 하려는 것이다.
+   * 방 화면을 다시 열어도 서버가 방 단위로 한 번만 담는다(후기를 이미 썼으면 담지 않는다).
+   */
+  const decidedPlaceId = state?.status === 'place_decided' ? (decidedPlace?.id ?? null) : null;
+  const [placeSaved, setPlaceSaved] = useState(false);
+  useEffect(() => {
+    if (!decidedPlaceId || !decidedPlace || !state) return;
+    let alive = true;
+    addVisit({
+      place: {
+        id: decidedPlace.id,
+        name: decidedPlace.place_name,
+        category: decidedPlace.category_name.replace(/^음식점 > /, ''),
+        address: decidedPlace.road_address_name || decidedPlace.address_name,
+        url: decidedPlace.place_url,
+      },
+      menuId: decidedMenuId,
+      roomCode: state.code,
+    })
+      .then(() => alive && setPlaceSaved(true))
+      .catch(() => {
+        // 못 담아도 방 화면은 그대로 쓴다. 가게 카드의 "여기로 정했어요"로 다시 담을 수 있다.
+      });
+    return () => {
+      alive = false;
+    };
+    // 가게가 정해진 순간 한 번이면 된다. state는 3초마다 새 객체라 넣으면 매번 부른다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [decidedPlaceId]);
 
   // 가게를 투표 없이 둘러만 볼 때. 방장이 정한 위치 기준이다.
   const browsePlaces = async () => {
@@ -378,8 +411,9 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
             </p>
             {/* 같이 정한 한 끼를 추억으로 남기는 입구. 함께한 사람은 방 참가자로 자동으로 들어간다. */}
             <p className="mt-3 rounded-xl bg-brand-soft px-3 py-2 text-xs text-neutral-700">
-              다녀온 뒤 아래 <span className="font-semibold">다녀왔어요</span>를 누르면 오늘 함께한 사람과 함께
-              먹로그에 남아요.
+              {placeSaved ? '✓ ' : ''}
+              <span className="font-semibold">나의 먹로그 · 방문한 가게</span>에 담았어요. 다녀온 뒤 거기서 후기를
+              쓰면 오늘 함께한 사람과 함께 남아요.
             </p>
           </div>
           <PlacesWithMap
@@ -391,6 +425,7 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
             menuId={decidedMenu?.id ?? null}
             menuName={decidedMenu?.name ?? null}
             roomCode={state.code}
+            pickedIds={placeSaved ? [decidedPlace.id] : []}
           />
         </section>
       )}
@@ -505,6 +540,7 @@ function PlacesWithMap({
   menuId,
   menuName,
   roomCode,
+  pickedIds,
 }: {
   center: { lat: number; lng: number };
   places: KakaoPlace[];
@@ -514,6 +550,7 @@ function PlacesWithMap({
   menuId: string | null;
   menuName: string | null;
   roomCode: string;
+  pickedIds?: readonly string[];
 }) {
   return (
     <>
@@ -528,6 +565,7 @@ function PlacesWithMap({
         menuId={menuId}
         menuName={menuName}
         roomCode={roomCode}
+        pickedIds={pickedIds}
       />
     </>
   );

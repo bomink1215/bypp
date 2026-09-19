@@ -52,6 +52,8 @@ export function ReviewSheet({
   menuId,
   menuName,
   roomCode,
+  visitId,
+  hasCompanions = false,
   onClose,
   onDone,
 }: {
@@ -59,6 +61,10 @@ export function ReviewSheet({
   menuId: string | null;
   menuName: string | null;
   roomCode?: string;
+  /** 먹로그의 방문한 가게에서 여는 경우. 가게·메뉴·함께한 사람은 그 기록을 그대로 쓴다. */
+  visitId?: string;
+  /** 함께한 사람이 남는 한 끼인가. 안내 문구에만 쓴다. */
+  hasCompanions?: boolean;
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -72,7 +78,7 @@ export function ReviewSheet({
     setBusy(true);
     setError(null);
     try {
-      await submitReview({ place, menuId, rating, body, nickname, roomCode });
+      await submitReview({ place, menuId, rating, body, nickname, roomCode, visitId });
       onDone();
     } catch (e) {
       setError(e instanceof Error ? e.message : '후기를 남기지 못했어요.');
@@ -133,7 +139,7 @@ export function ReviewSheet({
 
         <p className="text-[11px] leading-relaxed text-neutral-400">
           별점과 글은 이 가게를 보는 다른 사람에게도 보여요.
-          {roomCode && ' 함께한 친구 이름은 내 먹로그에만 남아요.'}
+          {(roomCode || hasCompanions) && ' 함께한 친구 이름은 내 먹로그에만 남아요.'}
         </p>
 
         {error && <p className="text-xs text-red-600">{error}</p>}

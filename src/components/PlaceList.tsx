@@ -8,7 +8,7 @@ import { formatDistance } from '@/lib/distance';
 import type { KakaoPlace } from '@/lib/kakao/types';
 import { cuisineOf } from '@/lib/menu/category-map';
 import { openHint } from '@/lib/menu/hours';
-import { deleteMyReview, fetchPlaceReviews, fetchRatings } from '@/lib/review/client';
+import { addVisit, deleteMyReview, fetchPlaceReviews, fetchRatings } from '@/lib/review/client';
 import type { PublicReview, RatingSummary, ReviewPlace } from '@/lib/review/types';
 
 /** 전문점 표시는 서버가 붙인다(rankRelevant). 예전 방 스냅샷에는 없을 수 있다. */
@@ -19,11 +19,13 @@ type Props = {
   at: Date;
   selectedId: string | null;
   onSelect: (id: string) => void;
-  /** 무엇을 먹으러 간 가게인가. 있으면 "다녀왔어요" 버튼이 생긴다(먹로그 카드에 남는다). */
+  /** 무엇을 먹으러 간 가게인가. "여기로 정했어요"로 담을 때 먹로그에 메뉴로 남는다. */
   menuId?: string | null;
   menuName?: string | null;
   /** 방에서 정한 한 끼면 함께한 사람이 먹로그에 같이 남는다. */
   roomCode?: string;
+  /** 이미 먹로그에 담긴 가게. 방에서 정한 가게는 자동으로 담기므로 처음부터 "담았어요"로 보인다. */
+  pickedIds?: readonly string[];
 };
 
 function toReviewPlace(p: KakaoPlace): ReviewPlace {
@@ -46,13 +48,43 @@ function toReviewPlace(p: KakaoPlace): ReviewPlace {
  * 별점은 우리 사용자가 남긴 것이다(카카오는 별점을 주지 않는다). 그래서 "이 앱 평점"이라고
  * 출처를 밝히고 개수를 같이 보여준다 — 한두 개짜리 평균을 카카오 별점처럼 보이게 하지 않는다.
  */
-export function PlaceList({ places, at, selectedId, onSelect, menuId = null, menuName = null, roomCode }: Props) {
+export function PlaceList({
+  places,
+  at,
+  selectedId,
+  onSelect,
+  menuId = null,
+  menuName = null,
+  roomCode,
+  pickedIds = [],
+}: Props) {
   const [ratings, setRatings] = useState<Record<string, RatingSummary>>({});
   const [reloadKey, setReloadKey] = useState(0);
   const [openReviews, setOpenReviews] = useState<string | null>(null);
   const [reviews, setReviews] = useState<Record<string, PublicReview[]>>({});
   const [writing, setWriting] = useState<ListedPlace | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [notice, setNotice] = useState<'visit' | 'review' | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(pickedIds));
+  const [pickingId, setPickingId] = useState<string | null>(null);
+  const [pickError, setPickError] = useState<string | null>(null);
+
+  /**
+   * "여기로 정했어요" — 고른 가게를 먹로그의 방문한 가게에 담는다.
+   * 먹으러 가서 브라우저를 닫아도, 나중에 먹로그에서 후기를 쓸 수 있게 하려는 것이다.
+   */
+  const pick = async (p: ListedPlace) => {
+    setPickingId(p.id);
+    setPickError(null);
+    try {
+      await addVisit({ place: toReviewPlace(p), menuId, roomCode });
+      setPicked((prev) => new Set(prev).add(p.id));
+      setNotice('visit');
+    } catch (e) {
+      setPickError(e instanceof Error ? e.message : '담지 못했어요. 다시 시도해주세요.');
+    } finally {
+      setPickingId(null);
+    }
+  };
 
   const idsKey = places.map((p) => p.id).join(',');
   useEffect(() => {
@@ -102,14 +134,23 @@ export function PlaceList({ places, at, selectedId, onSelect, menuId = null, men
           <li className="px-1 text-[11px] text-neutral-500">전문점 먼저, 같으면 가까운 순이에요.</li>
         )}
 
-        {saved && (
+        {notice && (
           <li className="flex items-center justify-between gap-2 rounded-2xl bg-brand-soft px-4 py-3 text-sm">
-            <span>먹로그에 남겼어요 🎉</span>
+            <span>
+              {notice === 'visit' ? (
+                <>
+                  먹로그 <span className="font-semibold">방문한 가게</span>에 담았어요. 다녀와서 후기를 써주세요!
+                </>
+              ) : (
+                '먹로그에 남겼어요 🎉'
+              )}
+            </span>
             <Link href="/mokrog" className="shrink-0 font-semibold text-brand underline underline-offset-2">
               보러 가기
             </Link>
           </li>
         )}
+        {pickError && <li className="px-1 text-xs text-red-600">{pickError}</li>}
 
         {places.map((p) => {
           const cuisine = cuisineOf(p.category_name);
@@ -229,17 +270,34 @@ export function PlaceList({ places, at, selectedId, onSelect, menuId = null, men
                 ) : (
                   <span />
                 )}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSaved(false);
-                    setWriting(p);
-                  }}
-                  className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium transition-colors hover:border-brand hover:text-brand"
-                >
-                  다녀왔어요 · 후기 쓰기
-                </button>
+                {picked.has(p.id) ? (
+                  <span className="flex items-center gap-2 text-xs">
+                    <span className="font-semibold text-brand">담았어요 ✓</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setNotice(null);
+                        setWriting(p);
+                      }}
+                      className="text-neutral-500 underline underline-offset-2 hover:text-neutral-800"
+                    >
+                      지금 후기 쓰기
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={pickingId === p.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void pick(p);
+                    }}
+                    className="rounded-full border border-brand/40 bg-white px-3 py-1.5 text-xs font-semibold text-brand transition-colors hover:bg-brand hover:text-white disabled:opacity-40"
+                  >
+                    {pickingId === p.id ? '담는 중…' : '여기로 정했어요'}
+                  </button>
+                )}
               </div>
             </li>
           );
@@ -256,7 +314,7 @@ export function PlaceList({ places, at, selectedId, onSelect, menuId = null, men
           onDone={() => {
             const id = writing.id;
             setWriting(null);
-            setSaved(true);
+            setNotice('review');
             setReloadKey((k) => k + 1);
             setReviews((prev) => {
               const next = { ...prev };
