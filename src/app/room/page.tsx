@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
-import { AuthBar } from '@/components/AuthBar';
+import { HeaderNav } from '@/components/HeaderNav';
 import { Brand } from '@/components/Brand';
 import { LocationPicker } from '@/components/LocationPicker';
 import { useGeolocation } from '@/hooks/useGeolocation';
@@ -86,7 +86,7 @@ export default function RoomEntryPage() {
     <main className="mx-auto w-full max-w-lg flex-1 space-y-5 px-4 py-6">
       <div className="flex items-center justify-between gap-2">
         <Brand />
-        <AuthBar />
+        <HeaderNav />
       </div>
 
       <header>

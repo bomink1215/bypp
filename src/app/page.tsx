@@ -87,6 +87,13 @@ export default function LandingPage() {
           )}
         </div>
 
+        <Link
+          href="/mokrog"
+          className="inline-block text-sm font-semibold text-brand underline underline-offset-4"
+        >
+          나의 먹로그 보기 →
+        </Link>
+
         <p className="text-xs leading-relaxed text-neutral-400">
           로그인하면 취향과 못 먹는 것을 기억해요
           <br />

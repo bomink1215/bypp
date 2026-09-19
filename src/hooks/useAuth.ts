@@ -15,6 +15,7 @@ import {
   mergeRestrictions,
   pushProfile,
 } from '@/lib/profile/sync';
+import { claimMyReviews } from '@/lib/review/client';
 import { authAvailable, supabaseBrowser } from '@/lib/supabase/browser';
 
 export type AuthState = {
@@ -137,6 +138,8 @@ export function useAuth(): AuthState {
       // 로그인 직후는 물론, 이미 로그인된 채로 다시 들어왔을 때도 원격 변경을 끌어온다.
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && next) {
         void syncNow(next.user.id);
+        // 게스트로 쓴 후기를 계정에 묶는다. 이미 묶인 건 건드리지 않으니 매번 불러도 된다.
+        void claimMyReviews(next.access_token);
       }
     });
 

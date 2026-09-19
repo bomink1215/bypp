@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 
 import Link from 'next/link';
 
-import { AuthBar } from '@/components/AuthBar';
+import { HeaderNav } from '@/components/HeaderNav';
 import { Brand } from '@/components/Brand';
 import { MenuCard } from '@/components/MenuCard';
 import { OptionPanel } from '@/components/OptionPanel';
@@ -42,7 +42,7 @@ export default function Home() {
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6">
       <div className="mb-6 flex items-center justify-between gap-2">
         <Brand />
-        <AuthBar />
+        <HeaderNav />
       </div>
 
       <header className="mb-4">
@@ -171,6 +171,8 @@ export default function Home() {
                 at={at}
                 selectedId={selectedId}
                 onSelect={setSelectedId}
+                menuId={rec.menu?.id ?? null}
+                menuName={rec.menu?.name ?? null}
               />
             </>
           )}

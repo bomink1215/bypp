@@ -2,7 +2,7 @@
 
 import { use, useCallback, useEffect, useMemo, useState } from 'react';
 
-import { AuthBar } from '@/components/AuthBar';
+import { HeaderNav } from '@/components/HeaderNav';
 import { Brand } from '@/components/Brand';
 import { OptionPanel } from '@/components/OptionPanel';
 import { PlaceList } from '@/components/PlaceList';
@@ -110,7 +110,7 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
     <main className="mx-auto w-full max-w-2xl flex-1 space-y-5 px-4 py-6">
       <div className="flex items-center justify-between gap-2">
         <Brand />
-        <AuthBar />
+        <HeaderNav />
       </div>
 
       <header>
@@ -291,6 +291,9 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
 
           {places.length > 0 && (
             <PlacesWithMap
+              menuId={decidedMenu.id}
+              menuName={decidedMenu.name}
+              roomCode={state.code}
               center={{ lat: state.lat, lng: state.lng }}
               places={places}
               at={eatAt}
@@ -373,6 +376,11 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
               {decidedMenu?.name} ·{' '}
               {eatAt.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: 'numeric' })}
             </p>
+            {/* 같이 정한 한 끼를 추억으로 남기는 입구. 함께한 사람은 방 참가자로 자동으로 들어간다. */}
+            <p className="mt-3 rounded-xl bg-brand-soft px-3 py-2 text-xs text-neutral-700">
+              다녀온 뒤 아래 <span className="font-semibold">다녀왔어요</span>를 누르면 오늘 함께한 사람과 함께
+              먹로그에 남아요.
+            </p>
           </div>
           <PlacesWithMap
             center={{ lat: state.lat, lng: state.lng }}
@@ -380,6 +388,9 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
             at={eatAt}
             selectedId={decidedPlace.id}
             onSelect={setSelectedId}
+            menuId={decidedMenu?.id ?? null}
+            menuName={decidedMenu?.name ?? null}
+            roomCode={state.code}
           />
         </section>
       )}
@@ -491,19 +502,33 @@ function PlacesWithMap({
   at,
   selectedId,
   onSelect,
+  menuId,
+  menuName,
+  roomCode,
 }: {
   center: { lat: number; lng: number };
   places: KakaoPlace[];
   at: Date;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  menuId: string | null;
+  menuName: string | null;
+  roomCode: string;
 }) {
   return (
     <>
       <div className="h-[260px]">
         <PlaceMap center={center} places={places} selectedId={selectedId} onSelect={onSelect} />
       </div>
-      <PlaceList places={places} at={at} selectedId={selectedId} onSelect={onSelect} />
+      <PlaceList
+        places={places}
+        at={at}
+        selectedId={selectedId}
+        onSelect={onSelect}
+        menuId={menuId}
+        menuName={menuName}
+        roomCode={roomCode}
+      />
     </>
   );
 }
@@ -524,7 +549,7 @@ function DecisionDialog({
   onClose,
 }: {
   alert: DecisionAlert;
-  menuName: string;
+  menuName: string | null;
   placeName: string;
   canChoosePlace: boolean;
   busy: boolean;
