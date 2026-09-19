@@ -326,7 +326,7 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
                 <li key={p.id}>
                   <VoteButton
                     label={p.place_name}
-                    sub={`${p.category_name.replace(/^음식점 > /, '')} · ${formatDistance(Number(p.distance))}`}
+                    sub={`${p.specialty ? '전문점 · ' : ''}${p.category_name.replace(/^음식점 > /, '')} · ${formatDistance(Number(p.distance))}`}
                     count={count}
                     mine={state.myPlaceVote === p.id}
                     disabled={room.busy}

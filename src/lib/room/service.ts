@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { walkMinutesToRadius } from '../distance';
-import { filterRelevant } from '../kakao/relevance';
+import { rankRelevant } from '../kakao/relevance';
 import { searchByCategory, searchByKeyword } from '../kakao/search';
 import type { Restriction } from '../menu/restrictions';
 import { MENU_BY_ID } from '../menu/seed';
@@ -181,7 +181,7 @@ async function requireParticipant(code: string, token: string): Promise<Particip
 }
 
 /**
- * 표를 센다. 동점이면 후보 순서가 앞선 쪽이 이긴다 — 메뉴는 점수 순, 가게는 거리 순이라
+ * 표를 센다. 동점이면 후보 순서가 앞선 쪽이 이긴다 — 메뉴는 점수 순, 가게는 전문점·거리 순이라
  * 무작위보다 설명하기 쉽다.
  */
 function winnerOf(votedIds: string[], order: string[]): string {
@@ -273,7 +273,7 @@ export async function startPlaceVoting(code: string, token: string): Promise<voi
     { lat: room.lat, lng: room.lng },
     walkMinutesToRadius(room.walk_min),
   );
-  const shortlist = filterRelevant(found, menu).slice(0, PLACE_SHORTLIST);
+  const shortlist = rankRelevant(found, menu).slice(0, PLACE_SHORTLIST);
   if (shortlist.length === 0) throw new RoomError('근처에서 이 메뉴를 파는 가게를 찾지 못했어요.');
 
   await db.update(

@@ -1,4 +1,4 @@
-import type { KakaoPlace } from '../kakao/types';
+import type { RankedPlace } from '../kakao/types';
 import type { Restriction } from '../menu/restrictions';
 import type { Candidate, MenuFilters, Relaxation } from '../menu/types';
 import type { Conflict } from './merge';
@@ -24,7 +24,7 @@ export type RoomRow = {
   conflicts: Conflict[] | null;
   decided_menu_id: string | null;
   /** 가게 투표 대상 스냅샷. 메뉴 후보와 같은 이유로 고정해 둔다. */
-  place_candidates: KakaoPlace[] | null;
+  place_candidates: RankedPlace[] | null;
   decided_place_id: string | null;
   created_at: string;
   expires_at: string;
@@ -74,7 +74,7 @@ export type RoomState = {
   restrictions: Restriction[];
   tally: { menuId: string; count: number }[];
   decidedMenuId: string | null;
-  placeCandidates: KakaoPlace[] | null;
+  placeCandidates: RankedPlace[] | null;
   placeTally: { placeId: string; count: number }[];
   myPlaceVote: string | null;
   decidedPlaceId: string | null;

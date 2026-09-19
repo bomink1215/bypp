@@ -2,11 +2,14 @@
 
 import { formatDistance } from '@/lib/distance';
 import type { KakaoPlace } from '@/lib/kakao/types';
+
+/** 전문점 표시는 서버가 붙인다(rankRelevant). 예전 방 스냅샷에는 없을 수 있다. */
+type ListedPlace = KakaoPlace & { specialty?: boolean };
 import { cuisineOf } from '@/lib/menu/category-map';
 import { openHint } from '@/lib/menu/hours';
 
 type Props = {
-  places: KakaoPlace[];
+  places: ListedPlace[];
   at: Date;
   selectedId: string | null;
   onSelect: (id: string) => void;
@@ -22,6 +25,10 @@ type Props = {
 export function PlaceList({ places, at, selectedId, onSelect }: Props) {
   return (
     <ul className="space-y-2">
+      {/* 순서가 거리만이 아니라는 걸 알려야 먼 가게가 위에 있어도 헷갈리지 않는다. */}
+      {places.some((p) => p.specialty) && (
+        <li className="px-1 text-[11px] text-neutral-500">전문점 먼저, 같으면 가까운 순이에요.</li>
+      )}
       {places.map((p) => {
         const cuisine = cuisineOf(p.category_name);
         const hint = cuisine ? openHint(cuisine, at) : null;
@@ -39,7 +46,14 @@ export function PlaceList({ places, at, selectedId, onSelect }: Props) {
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h3 className="truncate font-medium">{p.place_name}</h3>
+                <h3 className="flex min-w-0 items-center gap-1.5 font-medium">
+                  <span className="truncate">{p.place_name}</span>
+                  {p.specialty && (
+                    <span className="shrink-0 rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-semibold text-brand">
+                      전문점
+                    </span>
+                  )}
+                </h3>
                 <p className="mt-0.5 truncate text-xs text-neutral-500">
                   {p.category_name.replace(/^음식점 > /, '')}
                 </p>

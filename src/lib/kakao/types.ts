@@ -36,8 +36,14 @@ export type KakaoSearchResponse = {
   meta: KakaoMeta;
 };
 
+/** 우리가 붙인 표시가 더해진 가게. 카카오 응답 필드와 섞이지 않게 타입을 나눈다. */
+export type RankedPlace = KakaoPlace & {
+  /** 그 메뉴 전문점인가(세분류나 상호에 메뉴명). 목록 순서와 배지에 쓴다. */
+  specialty: boolean;
+};
+
 export type PlacesResponse = {
-  places: KakaoPlace[];
+  places: RankedPlace[];
 };
 
 /** 음식점 카테고리 그룹 코드. 카페는 CE7. */

@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 
 import { toErrorResponse } from '@/lib/api-error';
 import { walkMinutesToRadius } from '@/lib/distance';
-import { filterRelevant } from '@/lib/kakao/relevance';
+import { rankRelevant } from '@/lib/kakao/relevance';
 import { searchByKeyword } from '@/lib/kakao/search';
 import type { PlacesResponse } from '@/lib/kakao/types';
 import { MENU_BY_ID } from '@/lib/menu/seed';
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     const found = await searchByKeyword(menu.name, coords, walkMinutesToRadius(walkMin));
 
-    const body: PlacesResponse = { places: filterRelevant(found, menu) };
+    const body: PlacesResponse = { places: rankRelevant(found, menu) };
     return Response.json(body);
   } catch (e) {
     return toErrorResponse(e);
