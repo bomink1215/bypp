@@ -2,7 +2,7 @@ import 'server-only';
 
 import { MENU_BY_ID } from '../menu/seed';
 import { BadRequestError } from '../params';
-import { db, SupabaseError } from '../supabase/client';
+import { db } from '../supabase/client';
 import type { ParticipantRow, RoomRow } from '../room/types';
 import {
   REVIEW_BODY_MAX,
@@ -40,7 +40,7 @@ function mineFilter({ token, userId }: Author): string {
   return userId ? `(author_token.eq.${token},user_id.eq.${userId})` : `(author_token.eq.${token})`;
 }
 
-/** 한국 날짜(YYYY-MM-DD). "하루 한 번"의 하루는 한국 기준이다. */
+/** 한국 날짜(YYYY-MM-DD). 공개 후기에 "언제 먹었나"로 보여준다. */
 function koreanDate(d: Date): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(d);
 }
@@ -121,31 +121,23 @@ export async function createReview(
     }
   }
 
-  try {
-    await db.insert('reviews', {
-      author_token: author.token,
-      user_id: author.userId,
-      nickname: cleanText(input.nickname, 12),
-      place_id: place.id,
-      place_name: place.name,
-      place_category: place.category || null,
-      place_address: place.address || null,
-      place_url: place.url || null,
-      menu_id: menuId,
-      rating,
-      body: cleanText(input.body, REVIEW_BODY_MAX),
-      companions,
-      room_code: roomCode,
-      eaten_at: eatenAt.toISOString(),
-      eaten_on: koreanDate(eatenAt),
-    });
-  } catch (e) {
-    // reviews_one_per_day 유니크 제약. 평균을 부풀리는 걸 막는 최소한의 장치다.
-    if (e instanceof SupabaseError && e.status === 409) {
-      throw new BadRequestError('오늘 이 가게에는 이미 후기를 남겼어요.');
-    }
-    throw e;
-  }
+  await db.insert('reviews', {
+    author_token: author.token,
+    user_id: author.userId,
+    nickname: cleanText(input.nickname, 12),
+    place_id: place.id,
+    place_name: place.name,
+    place_category: place.category || null,
+    place_address: place.address || null,
+    place_url: place.url || null,
+    menu_id: menuId,
+    rating,
+    body: cleanText(input.body, REVIEW_BODY_MAX),
+    companions,
+    room_code: roomCode,
+    eaten_at: eatenAt.toISOString(),
+    eaten_on: koreanDate(eatenAt),
+  });
 }
 
 function toMine(r: ReviewRow): MyReview {
