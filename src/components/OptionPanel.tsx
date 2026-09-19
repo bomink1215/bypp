@@ -397,7 +397,8 @@ export function OptionPanel({
           className="flex w-full items-center justify-between gap-2 text-left"
         >
           <span className="text-sm font-semibold">
-            오늘의 선호 조건 눌러서 선택하기
+            {/* 접혀 있을 때만 "눌러서 선택하기"로 누를 수 있다는 걸 알린다. 펼친 뒤엔 제목만. */}
+            {expanded ? '오늘의 선호 조건' : '오늘의 선호 조건 눌러서 선택하기'}
             {activeCount > 0 && (
               <span className="ml-1.5 rounded-full bg-brand-soft px-2 py-0.5 text-xs font-semibold text-brand">
                 {activeCount}개 설정됨
