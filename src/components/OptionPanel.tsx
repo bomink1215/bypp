@@ -27,7 +27,7 @@ type Props = {
   currentCoords: Coords | null;
   /** 방에서는 위치와 시간을 방장이 정하므로 참가자에게는 감춘다. */
   hideLocationAndTime?: boolean;
-  /** "조건 더 보기"를 펼친 채로 시작할지. 방에서는 조건을 내는 게 목적이라 펼친다. */
+  /** "오늘의 선호 조건"을 펼친 채로 시작할지. 방에서는 조건을 내는 게 목적이라 펼친다. */
   defaultExpanded?: boolean;
 };
 
@@ -397,7 +397,7 @@ export function OptionPanel({
           className="flex w-full items-center justify-between gap-2 text-left"
         >
           <span className="text-sm font-semibold">
-            조건 더 보기
+            오늘의 선호 조건
             {activeCount > 0 && (
               <span className="ml-1.5 rounded-full bg-brand-soft px-2 py-0.5 text-xs font-semibold text-brand">
                 {activeCount}개 설정됨
