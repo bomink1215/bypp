@@ -89,9 +89,10 @@ export default function LandingPage() {
 
         <Link
           href="/mokrog"
-          className="inline-block text-sm font-semibold text-brand underline underline-offset-4"
+          className="inline-flex items-center gap-2 rounded-full bg-neutral-900 px-5 py-3 text-sm font-bold text-white shadow-sm transition-transform hover:-translate-y-0.5"
         >
-          나의 먹로그 보기 →
+          <span aria-hidden>📒</span>
+          나의 먹로그 보기
         </Link>
 
         <p className="text-xs leading-relaxed text-neutral-400">
