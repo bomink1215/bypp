@@ -34,10 +34,17 @@ const CONFLICT_LABEL: Partial<Record<keyof MenuFilters, string>> = {
   solo: '혼밥',
   quick: '빨리 먹기',
   formal: '격식',
+  egg: '달걀',
+  dairy: '유제품',
+  meatKind: '고기 종류',
   weight: '양',
+  price: '가격대',
 };
 
-const TOGGLE_KEYS = ['meat', 'seafood', 'flour', 'soup', 'solo', 'quick', 'formal'] as const;
+const TOGGLE_KEYS = ['meat', 'seafood', 'flour', 'egg', 'dairy', 'soup', 'solo', 'quick', 'formal'] as const;
+
+/** 토글처럼 한 값을 고르지만 있음·없음이 아닌 축. 의견이 갈리면 똑같이 해제하고 알린다. */
+const CHOICE_KEYS = ['weight', 'meatKind', 'price'] as const;
 
 /**
  * 하나로 좁힌다.
@@ -76,11 +83,13 @@ export function mergeConditions(participants: ParticipantInput[]): MergedConditi
     if (conflict) conflicts.push({ key, label: CONFLICT_LABEL[key] ?? key });
   }
 
-  const weights = new Set(participants.map((p) => p.filters.weight).filter((w) => w !== 'any'));
-  if (weights.size === 1) {
-    filters.weight = [...weights][0];
-  } else if (weights.size > 1) {
-    conflicts.push({ key: 'weight', label: CONFLICT_LABEL.weight ?? 'weight' });
+  for (const key of CHOICE_KEYS) {
+    const opinions = new Set<string>(participants.map((p) => p.filters[key]).filter((v) => v !== 'any'));
+    if (opinions.size === 1) {
+      (filters as Record<string, unknown>)[key] = [...opinions][0];
+    } else if (opinions.size > 1) {
+      conflicts.push({ key, label: CONFLICT_LABEL[key] ?? key });
+    }
   }
 
   // 제약은 합집합. 순서를 고정해 표시가 매번 달라지지 않게 한다.
@@ -107,7 +116,11 @@ function toggleMisses(menu: Menu, f: MenuFilters): number {
   check(f.solo, menu.solo);
   check(f.quick, menu.quick);
   check(f.formal, menu.formal);
+  check(f.egg, menu.egg);
+  check(f.dairy, menu.dairy);
   if (f.weight !== 'any' && menu.weight !== f.weight) misses += 1;
+  if (f.price !== 'any' && menu.price !== f.price) misses += 1;
+  if (f.meatKind !== 'any' && !menu[f.meatKind]) misses += 1;
 
   return misses;
 }

@@ -188,6 +188,7 @@ export default function RoomPage({ params }: PageProps<'/room/[code]'>) {
                 onToggleRestriction={profile.toggle}
                 currentCoords={geo.coords}
                 hideLocationAndTime
+                defaultExpanded
               />
               <button
                 type="button"

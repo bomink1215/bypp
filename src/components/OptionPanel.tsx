@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { LocationPicker } from './LocationPicker';
 import { walkMinutesToRadius } from '@/lib/distance';
 import { RESTRICTIONS, RESTRICTION_LABEL, type Restriction } from '@/lib/menu/restrictions';
-import type { MenuFilters, Taste, Toggle } from '@/lib/menu/types';
+import { DEFAULT_FILTERS, type MenuFilters, type Taste, type Toggle } from '@/lib/menu/types';
 import { REGIONS } from '@/lib/regions';
 import { defaultHour, formatHour, formatWhen, HOURS, type When } from '@/lib/when';
 import type { Coords, GeoStatus } from '@/hooks/useGeolocation';
@@ -27,7 +27,30 @@ type Props = {
   currentCoords: Coords | null;
   /** 방에서는 위치와 시간을 방장이 정하므로 참가자에게는 감춘다. */
   hideLocationAndTime?: boolean;
+  /** "조건 더 보기"를 펼친 채로 시작할지. 방에서는 조건을 내는 게 목적이라 펼친다. */
+  defaultExpanded?: boolean;
 };
+
+const MEAT_KINDS: readonly (readonly [MenuFilters['meatKind'], string])[] = [
+  ['any', '상관없음'],
+  ['pork', '돼지'],
+  ['beef', '소'],
+  ['chicken', '닭'],
+];
+
+const PRICES: readonly (readonly [MenuFilters['price'], string])[] = [
+  ['any', '상관없음'],
+  ['low', '1만원 이하'],
+  ['mid', '1~2만원'],
+  ['high', '2만원 이상'],
+];
+
+/** 기본값에서 바뀐 조건 수. 접혀 있어도 무엇이 걸려 있는지 알 수 있게 한다. */
+function countActive(f: MenuFilters): number {
+  return (Object.keys(DEFAULT_FILTERS) as (keyof MenuFilters)[]).filter(
+    (k) => f[k] !== DEFAULT_FILTERS[k],
+  ).length;
+}
 
 function Chip({
   active,
@@ -186,8 +209,11 @@ export function OptionPanel({
   onToggleRestriction,
   currentCoords,
   hideLocationAndTime = false,
+  defaultExpanded = false,
 }: Props) {
   const [picking, setPicking] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const activeCount = countActive(filters);
 
   const set = <K extends keyof MenuFilters>(key: K, value: MenuFilters[K]) =>
     onFiltersChange({ ...filters, [key]: value });
@@ -351,78 +377,155 @@ export function OptionPanel({
       </Group>
       )}
 
-      <Group title="맛">
-        <div className="space-y-4">
-          <TasteBar left="순함" right="매움" value={filters.spicy} onChange={(v) => set('spicy', v)} />
-          <TasteBar
-            left="담백함"
-            right="느끼함"
-            value={filters.richness}
-            onChange={(v) => set('richness', v)}
-          />
-          <TasteBar
-            left="시원함"
-            right="뜨끈함"
-            value={filters.temperature}
-            onChange={(v) => set('temperature', v)}
-          />
-        </div>
-      </Group>
+      {/*
+        맛·식재료·양·가격·기타는 접어둔다. "조작할 게 많다"는 피드백과 "기준을 늘려 달라"는
+        피드백이 같이 들어왔다 — 기준은 늘리되 기본 화면에서는 치워서 둘 다 만족시킨다.
+        방에서는 조건을 내는 게 할 일의 전부라 펼친 채로 시작한다.
+      */}
+      <section className="border-t border-neutral-100 pt-4">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className="flex w-full items-center justify-between gap-2 text-left"
+        >
+          <span className="text-sm font-semibold">
+            조건 더 보기
+            {activeCount > 0 && (
+              <span className="ml-1.5 rounded-full bg-brand-soft px-2 py-0.5 text-xs font-semibold text-brand">
+                {activeCount}개 설정됨
+              </span>
+            )}
+          </span>
+          <span
+            aria-hidden
+            className={`text-neutral-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+          >
+            ▾
+          </span>
+        </button>
+        {!expanded && (
+          <p className="mt-1 text-[11px] text-neutral-400">맛 · 식재료 · 양 · 가격대 · 혼밥 · 격식 등</p>
+        )}
+      </section>
 
-      <Group title="식재료">
-        <div className="space-y-2.5">
-          <ToggleRow label="고기" value={filters.meat} onChange={(v) => set('meat', v)} />
-          <ToggleRow label="해물" value={filters.seafood} onChange={(v) => set('seafood', v)} />
-          <ToggleRow label="밀가루" value={filters.flour} onChange={(v) => set('flour', v)} />
-        </div>
-      </Group>
+      {expanded && (
+        <>
+        <Group title="맛">
+          <div className="space-y-4">
+            <TasteBar left="순함" right="매움" value={filters.spicy} onChange={(v) => set('spicy', v)} />
+            <TasteBar
+              left="담백함"
+              right="느끼함"
+              value={filters.richness}
+              onChange={(v) => set('richness', v)}
+            />
+            <TasteBar
+              left="시원함"
+              right="뜨끈함"
+              value={filters.temperature}
+              onChange={(v) => set('temperature', v)}
+            />
+          </div>
+        </Group>
 
-      <Group title="양">
-        <div className="flex flex-wrap gap-2">
-          <Chip active={filters.weight === 'any'} onClick={() => set('weight', 'any')}>
-            상관없음
-          </Chip>
-          <Chip active={filters.weight === 'light'} onClick={() => set('weight', 'light')}>
-            가볍게
-          </Chip>
-          <Chip active={filters.weight === 'heavy'} onClick={() => set('weight', 'heavy')}>
-            든든하게
-          </Chip>
-        </div>
-      </Group>
+        <Group title="식재료">
+          <div className="space-y-2.5">
+            <ToggleRow
+              label="고기"
+              value={filters.meat}
+              onChange={(v) =>
+                // 고기 '없음'이면 종류를 고를 이유가 없다. 남겨두면 아무 메뉴도 안 맞는다.
+                onFiltersChange({ ...filters, meat: v, meatKind: v === 'no' ? 'any' : filters.meatKind })
+              }
+            />
+            {filters.meat !== 'no' && (
+              <div className="flex items-center justify-between gap-3 pl-3">
+                <span className="text-xs text-neutral-500">└ 종류</span>
+                <div className="flex gap-1.5">
+                  {MEAT_KINDS.map(([kind, label]) => (
+                    <Chip
+                      key={kind}
+                      active={filters.meatKind === kind}
+                      onClick={() => set('meatKind', kind)}
+                    >
+                      {label}
+                    </Chip>
+                  ))}
+                </div>
+              </div>
+            )}
+            <ToggleRow label="해물" value={filters.seafood} onChange={(v) => set('seafood', v)} />
+            <ToggleRow label="밀가루" value={filters.flour} onChange={(v) => set('flour', v)} />
+            <ToggleRow label="달걀" value={filters.egg} onChange={(v) => set('egg', v)} />
+            <ToggleRow label="유제품" value={filters.dairy} onChange={(v) => set('dairy', v)} />
+          </div>
+        </Group>
 
-      <Group title="기타">
-        <div className="space-y-2.5">
-          <ToggleRow label="국물" value={filters.soup} onChange={(v) => set('soup', v)} />
-          <ToggleRow
-            label="혼밥"
-            value={filters.solo}
-            onChange={(v) => set('solo', v)}
-            yes="가능한 것"
-            no="여럿이"
-          />
-          <ToggleRow
-            label="빨리 먹기"
-            value={filters.quick}
-            onChange={(v) => set('quick', v)}
-            yes="가능한 것"
-            no="천천히"
-          />
-          <ToggleRow
-            label="격식"
-            value={filters.formal}
-            onChange={(v) => set('formal', v)}
-            yes="격식 있게"
-            no="편하게"
-          />
-          {/* 메뉴까지만 약속한다. 가게 분위기는 카카오도 알려주지 않는다(원칙 1). */}
-          {filters.formal === 'yes' && (
+        <Group title="양">
+          <div className="flex flex-wrap gap-2">
+            <Chip active={filters.weight === 'any'} onClick={() => set('weight', 'any')}>
+              상관없음
+            </Chip>
+            <Chip active={filters.weight === 'light'} onClick={() => set('weight', 'light')}>
+              가볍게
+            </Chip>
+            <Chip active={filters.weight === 'heavy'} onClick={() => set('weight', 'heavy')}>
+              든든하게
+            </Chip>
+          </div>
+        </Group>
+
+        <Group title="가격대 (1인)">
+          <div className="flex flex-wrap gap-2">
+            {PRICES.map(([price, label]) => (
+              <Chip key={price} active={filters.price === price} onClick={() => set('price', price)}>
+                {label}
+              </Chip>
+            ))}
+          </div>
+          {/* 가게 가격은 카카오가 주지 않는다. 메뉴의 보통 가격대까지만 약속한다(원칙 1). */}
+          {filters.price !== 'any' && (
             <p className="text-[11px] leading-relaxed text-neutral-400">
-              대접하기 좋은 메뉴로 골라요. 가게 분위기와 룸 여부는 카카오맵에서 확인하세요.
+              메뉴의 보통 가격대로 골라요. 가게마다 다를 수 있으니 카카오맵에서 확인하세요.
             </p>
           )}
-        </div>
-      </Group>
+        </Group>
+
+        <Group title="기타">
+          <div className="space-y-2.5">
+            <ToggleRow label="국물" value={filters.soup} onChange={(v) => set('soup', v)} />
+            <ToggleRow
+              label="혼밥"
+              value={filters.solo}
+              onChange={(v) => set('solo', v)}
+              yes="가능한 것"
+              no="여럿이"
+            />
+            <ToggleRow
+              label="빨리 먹기"
+              value={filters.quick}
+              onChange={(v) => set('quick', v)}
+              yes="가능한 것"
+              no="천천히"
+            />
+            <ToggleRow
+              label="격식"
+              value={filters.formal}
+              onChange={(v) => set('formal', v)}
+              yes="격식 있게"
+              no="편하게"
+            />
+            {/* 메뉴까지만 약속한다. 가게 분위기는 카카오도 알려주지 않는다(원칙 1). */}
+            {filters.formal === 'yes' && (
+              <p className="text-[11px] leading-relaxed text-neutral-400">
+                대접하기 좋은 메뉴로 골라요. 가게 분위기와 룸 여부는 카카오맵에서 확인하세요.
+              </p>
+            )}
+          </div>
+        </Group>
+        </>
+      )}
     </div>
   );
 }

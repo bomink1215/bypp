@@ -23,6 +23,17 @@ const RELAX_LABEL: Record<Relaxation, string> = {
   solo: '혼밥',
   quick: '빨리 먹기',
   formal: '격식',
+  meatKind: '고기 종류',
+  egg: '달걀',
+  dairy: '유제품',
+  price: '가격대',
+};
+
+/** 가게 가격이 아니라 메뉴의 보통 가격대다. 카드에서도 '대략'임을 드러낸다. */
+const PRICE_LABEL: Record<Menu['price'], string> = {
+  low: '1만원 이하 정도',
+  mid: '1~2만원 정도',
+  high: '2만원 이상 정도',
 };
 
 function traits(menu: Menu): string[] {
@@ -44,6 +55,7 @@ function traits(menu: Menu): string[] {
   if (menu.formal) out.push('격식 있는 자리');
 
   out.push(menu.weight === 'heavy' ? '든든' : menu.weight === 'light' ? '가벼움' : '보통');
+  out.push(PRICE_LABEL[menu.price]);
   return out;
 }
 

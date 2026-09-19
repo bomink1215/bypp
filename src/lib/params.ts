@@ -44,6 +44,14 @@ function parseTaste(raw: string | null): Taste {
   return n as Level;
 }
 
+export function parseMeatKind(raw: unknown): MenuFilters['meatKind'] {
+  return raw === 'pork' || raw === 'beef' || raw === 'chicken' ? raw : 'any';
+}
+
+export function parsePrice(raw: unknown): MenuFilters['price'] {
+  return raw === 'low' || raw === 'mid' || raw === 'high' ? raw : 'any';
+}
+
 function parseToggle(raw: string | null): Toggle {
   return raw === 'yes' || raw === 'no' ? raw : 'any';
 }
@@ -63,5 +71,9 @@ export function parseFilters(sp: URLSearchParams): MenuFilters {
     solo: parseToggle(sp.get('solo')),
     quick: parseToggle(sp.get('quick')),
     formal: parseToggle(sp.get('formal')),
+    meatKind: parseMeatKind(sp.get('meatKind')),
+    egg: parseToggle(sp.get('egg')),
+    dairy: parseToggle(sp.get('dairy')),
+    price: parsePrice(sp.get('price')),
   };
 }

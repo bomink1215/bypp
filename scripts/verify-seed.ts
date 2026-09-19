@@ -13,6 +13,14 @@
  */
 import { MENUS } from '../src/lib/menu/seed.ts';
 
+// 카카오를 부르기 전에 데이터끼리 어긋난 것부터 본다. 고기 종류가 붙었는데 meat가 false면
+// "고기 전체 못 먹음"이 그 메뉴를 놓친다 — 못 먹는 걸 추천하게 되는 종류의 실수다.
+const inconsistent = MENUS.filter((m) => (m.pork || m.beef || m.chicken) && !m.meat);
+if (inconsistent.length > 0) {
+  console.error(`고기 종류가 있는데 meat가 false: ${inconsistent.map((m) => m.name).join(', ')}`);
+  process.exit(1);
+}
+
 const KEY = process.env.KAKAO_REST_API_KEY;
 if (!KEY) {
   console.error('KAKAO_REST_API_KEY가 없습니다. .env.local을 확인하세요.');

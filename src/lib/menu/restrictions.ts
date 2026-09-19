@@ -16,16 +16,46 @@ import type { Menu } from './types';
  * 붙인 대분류 태그일 뿐이다. UI 문구도 "안전"이 아니라 "이런 건 빼고 추천"에 머물러야
  * 하고, 최종 확인은 가게에서 하도록 안내해야 한다.
  */
-export type Restriction = 'spicy' | 'rich' | 'seafood' | 'flour' | 'meat';
+export type Restriction =
+  | 'spicy'
+  | 'rich'
+  | 'seafood'
+  | 'flour'
+  | 'meat'
+  | 'pork'
+  | 'beef'
+  | 'chicken'
+  | 'egg'
+  | 'dairy';
 
-export const RESTRICTIONS: readonly Restriction[] = ['spicy', 'rich', 'seafood', 'flour', 'meat'];
+/**
+ * 화면에 나오는 순서다. 고기 전체(채식)와 고기 종류(종교·체질)를 둘 다 둔다 — '돼지고기는
+ * 못 먹지만 소고기는 된다'를 '고기'로 뭉치면 먹을 수 있는 걸 너무 많이 뺀다.
+ */
+export const RESTRICTIONS: readonly Restriction[] = [
+  'spicy',
+  'rich',
+  'seafood',
+  'flour',
+  'meat',
+  'pork',
+  'beef',
+  'chicken',
+  'egg',
+  'dairy',
+];
 
 export const RESTRICTION_LABEL: Record<Restriction, string> = {
   spicy: '매운 것',
   rich: '느끼한 것',
   seafood: '해산물',
   flour: '밀가루',
-  meat: '고기',
+  meat: '고기 전체',
+  pork: '돼지고기',
+  beef: '소고기',
+  chicken: '닭고기',
+  egg: '달걀',
+  dairy: '유제품',
 };
 
 /** 맛 축은 정도의 문제라 어디부터 "못 먹는"으로 볼지 선을 그어야 한다. */
@@ -44,6 +74,16 @@ export function violates(menu: Menu, restriction: Restriction): boolean {
       return menu.flour;
     case 'meat':
       return menu.meat;
+    case 'pork':
+      return menu.pork;
+    case 'beef':
+      return menu.beef;
+    case 'chicken':
+      return menu.chicken;
+    case 'egg':
+      return menu.egg;
+    case 'dairy':
+      return menu.dairy;
   }
 }
 

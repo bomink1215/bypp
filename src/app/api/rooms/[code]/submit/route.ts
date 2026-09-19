@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { toErrorResponse } from '@/lib/api-error';
 import { RESTRICTIONS, type Restriction } from '@/lib/menu/restrictions';
 import { DEFAULT_FILTERS, type MenuFilters } from '@/lib/menu/types';
+import { parseMeatKind, parsePrice } from '@/lib/params';
 import { requireCode, requireToken } from '@/lib/room/request';
 import { submitConditions } from '@/lib/room/service';
 
@@ -24,6 +25,10 @@ function sanitize(raw: unknown): MenuFilters {
     solo: toggle(f.solo),
     quick: toggle(f.quick),
     formal: toggle(f.formal),
+    meatKind: parseMeatKind(f.meatKind),
+    egg: toggle(f.egg),
+    dairy: toggle(f.dairy),
+    price: parsePrice(f.price),
     weight: f.weight === 'light' || f.weight === 'heavy' ? f.weight : 'any',
   };
 }

@@ -19,6 +19,14 @@ export function matchesFilters(menu: Menu, f: MenuFilters): boolean {
   if (f.flour === 'yes' && !menu.flour) return false;
   if (f.flour === 'no' && menu.flour) return false;
 
+  if (f.meatKind !== 'any' && !menu[f.meatKind]) return false;
+
+  if (f.egg === 'yes' && !menu.egg) return false;
+  if (f.egg === 'no' && menu.egg) return false;
+
+  if (f.dairy === 'yes' && !menu.dairy) return false;
+  if (f.dairy === 'no' && menu.dairy) return false;
+
   if (f.soup === 'yes' && !menu.soup) return false;
   if (f.soup === 'no' && menu.soup) return false;
 
@@ -33,6 +41,8 @@ export function matchesFilters(menu: Menu, f: MenuFilters): boolean {
 
   if (f.weight === 'light' && menu.weight !== 'light') return false;
   if (f.weight === 'heavy' && menu.weight !== 'heavy') return false;
+
+  if (f.price !== 'any' && menu.price !== f.price) return false;
 
   return true;
 }
@@ -125,10 +135,27 @@ export function buildCandidates({
  * 어기면 단순히 아쉬운 게 아니라 못 먹는 걸 추천하는 셈이 된다.
  * 맛 3축은 소프트 점수라 후보를 지우지 않으므로 완화 대상이 아니다.
  *
+ * 가격대는 격식 바로 앞이다. 예산은 지키고 싶지만, 대접 자리에서 격식을 먼저 버리는 것보다는
+ * 예산을 조금 넘기는 쪽이 낫다.
+ *
  * 격식(formal)은 편의 조건들보다 뒤에 둔다. 윗사람 대접 자리에 분식이 뜨는 건 "아쉬운"
  * 정도가 아니다. 그래도 식재료보다는 앞이다 — 못 먹는 걸 내놓는 것보다는 낫다.
  */
-const RELAX_ORDER = ['quick', 'solo', 'weight', 'soup', 'formal', 'flour', 'seafood', 'meat'] as const;
+const RELAX_ORDER = [
+  'quick',
+  'solo',
+  'weight',
+  'soup',
+  'price',
+  'formal',
+  // 고기 종류는 '오늘은 소고기' 같은 바람이라 식재료 중 가장 먼저 푼다.
+  'meatKind',
+  'dairy',
+  'egg',
+  'flour',
+  'seafood',
+  'meat',
+] as const;
 
 export type DerivedCandidates = {
   candidates: Candidate[];

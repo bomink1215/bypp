@@ -22,6 +22,16 @@ export type Cuisine =
   | 'chicken'
   | 'fastfood';
 
+/** 고기 종류. 양고기처럼 셋 어디에도 안 드는 고기는 meat만 true다. */
+export type MeatKind = 'pork' | 'beef' | 'chicken';
+
+/**
+ * 1인 기준 보통 가격대. 메뉴에 붙이는 추정이지 가게 가격이 아니다 — 카카오는 가격을 주지
+ * 않는다(원칙 1). 격식과 같은 방식이라 화면에서도 "가게마다 다를 수 있다"고 안내한다.
+ *   low ~1만원 / mid 1~2만원 / high 2만원~
+ */
+export type PriceBand = 'low' | 'mid' | 'high';
+
 export type Weight = 'light' | 'normal' | 'heavy';
 
 /** 0~3 눈금. 맛 슬라이더 세 축이 공유한다. */
@@ -44,11 +54,22 @@ export type Menu = {
   temperature: Level;
 
   // ── 식재료 ──
-  /** 육류(돼지·소·닭) 포함 여부. 해물은 별도 축이다. */
+  /** 육류 포함 여부(돼지·소·닭·양 등 전부). 해물은 별도 축이다. */
   meat: boolean;
+  /**
+   * 고기 종류. 그 메뉴의 대표 구성 기준이다. 곱창(소곱창·돼지막창)처럼 둘 다 흔하면 둘 다 true.
+   * 셋 중 하나라도 true면 meat도 true여야 한다(verify-seed가 검사).
+   */
+  pork: boolean;
+  beef: boolean;
+  chicken: boolean;
   seafood: boolean;
   /** 면·빵·튀김옷 등 밀가루. 쌀국수처럼 쌀로 만든 면은 false. */
   flour: boolean;
+  /** 대표 구성에 달걀이 들어가는가(라멘의 반숙란, 비빔밥의 프라이, 돈까스 튀김옷). */
+  egg: boolean;
+  /** 치즈·버터·크림·우유. 피자·크림 파스타·리조또 같은 것. */
+  dairy: boolean;
 
   // ── 기타 ──
   soup: boolean;
@@ -62,6 +83,8 @@ export type Menu = {
    * 않는다(원칙 1). 그래서 화면에서도 가게 분위기는 카카오맵에서 확인하라고 안내한다.
    */
   formal: boolean;
+
+  price: PriceBand;
 
   weight: Weight;
 };
@@ -96,8 +119,14 @@ export type MenuFilters = {
   meat: Toggle;
   seafood: Toggle;
   flour: Toggle;
+  /** 고기 종류 고르기. 'any'가 아니면 그 고기가 들어간 메뉴만. 고기 '없음'과는 같이 걸리지 않는다. */
+  meatKind: 'any' | MeatKind;
+  egg: Toggle;
+  dairy: Toggle;
   // 양 — 하드
   weight: 'any' | 'light' | 'heavy';
+  // 가격대 — 하드
+  price: 'any' | PriceBand;
   // 기타 — 하드
   soup: Toggle;
   solo: Toggle;
@@ -112,7 +141,11 @@ export const DEFAULT_FILTERS: MenuFilters = {
   meat: 'any',
   seafood: 'any',
   flour: 'any',
+  meatKind: 'any',
+  egg: 'any',
+  dairy: 'any',
   weight: 'any',
+  price: 'any',
   soup: 'any',
   solo: 'any',
   quick: 'any',
@@ -125,6 +158,10 @@ export type Relaxation =
   | 'meat'
   | 'seafood'
   | 'flour'
+  | 'meatKind'
+  | 'egg'
+  | 'dairy'
+  | 'price'
   | 'weight'
   | 'soup'
   | 'solo'
@@ -153,7 +190,11 @@ export function filtersToParams(f: MenuFilters): Record<string, string> {
     meat: f.meat,
     seafood: f.seafood,
     flour: f.flour,
+    meatKind: f.meatKind,
+    egg: f.egg,
+    dairy: f.dairy,
     weight: f.weight,
+    price: f.price,
     soup: f.soup,
     solo: f.solo,
     quick: f.quick,
